@@ -5,14 +5,30 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
-    const base64Response = await fetch(base64Data);
-    const blob = await base64Response.blob();
+    // Remove data URL prefix if present
+    const base64String = base64Data.includes('base64,') 
+      ? base64Data.split('base64,')[1] 
+      : base64Data;
+
+    // Convert base64 to Blob
+    const byteString = atob(base64String);
+    const arrayBuffer = new ArrayBuffer(byteString.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      uint8Array[i] = byteString.charCodeAt(i);
+    }
+    
+    const blob = new Blob([uint8Array], { type: 'image/png' });
     const filePath = `${crypto.randomUUID()}-${filename}`;
+    
+    console.log('Uploading blob:', { size: blob.size, type: blob.type });
     
     const { error: uploadError } = await supabase.storage
       .from('images')
       .upload(filePath, blob, {
         contentType: 'image/png',
+        cacheControl: '3600',
         upsert: false
       });
 
