@@ -1,10 +1,7 @@
 
+import * as tf from '@tensorflow/tfjs';
+import * as bodySegmentation from '@tensorflow-models/body-segmentation';
 import { supabase } from "@/integrations/supabase/client";
-import { pipeline, env } from '@huggingface/transformers';
-
-// Configure transformers.js to use browser
-env.allowLocalModels = false;
-env.useBrowserCache = false;
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
@@ -40,72 +37,72 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
   }
 };
 
+export const loadSegmentationModel = async () => {
+  await tf.ready();
+  const model = await bodySegmentation.createSegmenter(
+    bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation,
+    {
+      runtime: 'tfjs',
+      modelType: 'general'
+    }
+  );
+  return model;
+};
+
 export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<string> => {
   try {
-    console.log('Starting segmentation process...');
-    
-    // Initialize the segmentation model
-    const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
-      device: 'webgpu'
+    const model = await loadSegmentationModel();
+    const segmentation = await model.segmentPeople(canvas, {
+      multiSegmentation: false,
+      segmentBodyParts: false
     });
 
-    // Get image data from canvas
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('Image converted to data URL');
-
-    // Process the image with the segmentation model
-    console.log('Running segmentation...');
-    const segments = await segmenter(imageData, {
-      threshold: 0.5,
-    });
-
-    console.log('Segmentation complete:', segments);
-
-    // Create a new canvas for the mask
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = canvas.width;
     maskCanvas.height = canvas.height;
-    const ctx = maskCanvas.getContext('2d');
+    const maskCtx = maskCanvas.getContext('2d')!;
 
-    if (!ctx) {
-      throw new Error('Could not get canvas context');
-    }
+    // Set black background (preserved areas)
+    maskCtx.fillStyle = 'black';
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-    // Create binary mask from segmentation results
-    const imageData2 = ctx.createImageData(canvas.width, canvas.height);
-    const data = imageData2.data;
-
-    // Find clothing-related segments
-    const clothingSegments = segments.filter((segment: any) => {
-      const clothingLabels = ['dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top'];
-      return clothingLabels.some(label => segment.label.toLowerCase().includes(label));
-    });
-
-    // Fill the mask with white for clothing pixels, black for others
-    for (let i = 0; i < data.length; i += 4) {
-      const x = (i / 4) % canvas.width;
-      const y = Math.floor((i / 4) / canvas.width);
+    if (segmentation.length > 0) {
+      // Get the segmentation mask
+      const foregroundMask = await segmentation[0].mask.toImageData();
       
-      // Check if this pixel belongs to any clothing segment
-      const isClothing = clothingSegments.some((segment: any) => {
-        const maskIndex = y * canvas.width + x;
-        return segment.mask.data[maskIndex] > 0.5;
-      });
+      // Process the mask data to create binary mask
+      const bytes = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+      
+      // Create a binary mask focusing on the body area
+      for (let i = 0; i < foregroundMask.data.length; i += 4) {
+        // Skip the head area (approximately top 25% of the detected person)
+        const y = Math.floor((i / 4) / canvas.width);
+        const personHeight = canvas.height;
+        const isInHeadArea = y < personHeight * 0.25;
 
-      // Set pixel values (white for clothing, black for background)
-      data[i] = isClothing ? 255 : 0;     // R
-      data[i + 1] = isClothing ? 255 : 0; // G
-      data[i + 2] = isClothing ? 255 : 0; // B
-      data[i + 3] = 255;                  // A
+        if (foregroundMask.data[i + 3] > 0 && !isInHeadArea) {
+          const j = i;
+          bytes[j] = 255;     // R
+          bytes[j + 1] = 255; // G
+          bytes[j + 2] = 255; // B
+          bytes[j + 3] = 255; // A
+        } else {
+          const j = i;
+          bytes[j] = 0;     // R
+          bytes[j + 1] = 0; // G
+          bytes[j + 2] = 0; // B
+          bytes[j + 3] = 255; // A
+        }
+      }
+
+      const imageData = new ImageData(bytes, canvas.width, canvas.height);
+      maskCtx.putImageData(imageData, 0, 0);
     }
 
-    ctx.putImageData(imageData2, 0, 0);
-    console.log('Mask created successfully');
-
-    // Convert to base64
+    console.log('Generated body segmentation mask');
     return maskCanvas.toDataURL('image/png');
   } catch (error) {
-    console.error('Error in createBinaryMask:', error);
+    console.error('Error in segmentation:', error);
     throw error;
   }
 };
