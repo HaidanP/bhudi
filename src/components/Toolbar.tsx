@@ -24,6 +24,11 @@ export const Toolbar = ({
     }
   };
 
+  const handleUploadClick = () => {
+    // Programmatically click the hidden file input
+    document.getElementById('image-upload')?.click();
+  };
+
   return (
     <div className="flex items-center gap-6 p-4 bg-white rounded-lg shadow-sm">
       <div>
@@ -34,12 +39,10 @@ export const Toolbar = ({
           className="hidden"
           id="image-upload"
         />
-        <Label htmlFor="image-upload" className="cursor-pointer">
-          <Button variant="outline" className="gap-2">
-            <Upload size={16} />
-            Upload Image
-          </Button>
-        </Label>
+        <Button variant="outline" className="gap-2" onClick={handleUploadClick}>
+          <Upload size={16} />
+          Upload Image
+        </Button>
       </div>
 
       <div className="flex items-center gap-4 flex-1">
