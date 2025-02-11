@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas } from "fabric";
+import { fabric } from "fabric";
 import { Toolbar } from "./Toolbar";
 import { PromptInput } from "./PromptInput";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const ImageEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+  const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushSize, setBrushSize] = useState(20);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export const ImageEditor = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = new FabricCanvas(canvasRef.current, {
+    const canvas = new fabric.Canvas(canvasRef.current, {
       isDrawingMode: true,
       width: 800,
       height: 600,
