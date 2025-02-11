@@ -54,7 +54,7 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     const model = await loadSegmentationModel();
     const segmentation = await model.segmentPeople(canvas, {
       multiSegmentation: false,
-      segmentBodyParts: false
+      segmentBodyParts: true // Enable body part segmentation
     });
 
     const maskCanvas = document.createElement('canvas');
@@ -67,31 +67,55 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
 
     if (segmentation.length > 0) {
-      // Get the segmentation mask
       const foregroundMask = await segmentation[0].mask.toImageData();
-      
-      // Process the mask data to create binary mask
       const bytes = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+
+      // Find the person's bounding box
+      let minY = canvas.height;
+      let maxY = 0;
       
-      // Create a binary mask focusing on the body area
+      // First pass to find the person's height bounds
       for (let i = 0; i < foregroundMask.data.length; i += 4) {
-        // Skip the head area (approximately top 25% of the detected person)
+        if (foregroundMask.data[i + 3] > 0) {
+          const y = Math.floor((i / 4) / canvas.width);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        }
+      }
+
+      const personHeight = maxY - minY;
+      const headHeight = personHeight * 0.2; // Head is approximately 1/5 of body height
+      const neckPosition = minY + headHeight;
+      const shoulderWidth = canvas.width * 0.25; // Approximate shoulder width
+      
+      // Second pass to create the binary mask
+      for (let i = 0; i < foregroundMask.data.length; i += 4) {
+        const x = (i / 4) % canvas.width;
         const y = Math.floor((i / 4) / canvas.width);
-        const personHeight = canvas.height;
-        const isInHeadArea = y < personHeight * 0.25;
+        
+        // Calculate distance from vertical centerline
+        const centerX = canvas.width / 2;
+        const distanceFromCenter = Math.abs(x - centerX);
+
+        // Check if pixel is in the head area using multiple criteria
+        const isInHeadArea = (
+          y < neckPosition && // Below the calculated neck position
+          distanceFromCenter < shoulderWidth / 2 && // Within shoulder width
+          foregroundMask.data[i + 3] > 0 // Is part of the person
+        );
 
         if (foregroundMask.data[i + 3] > 0 && !isInHeadArea) {
-          const j = i;
-          bytes[j] = 255;     // R
-          bytes[j + 1] = 255; // G
-          bytes[j + 2] = 255; // B
-          bytes[j + 3] = 255; // A
+          // Include in mask (white)
+          bytes[i] = 255;     // R
+          bytes[i + 1] = 255; // G
+          bytes[i + 2] = 255; // B
+          bytes[i + 3] = 255; // A
         } else {
-          const j = i;
-          bytes[j] = 0;     // R
-          bytes[j + 1] = 0; // G
-          bytes[j + 2] = 0; // B
-          bytes[j + 3] = 255; // A
+          // Exclude from mask (black)
+          bytes[i] = 0;     // R
+          bytes[i + 1] = 0; // G
+          bytes[i + 2] = 0; // B
+          bytes[i + 3] = 255; // A
         }
       }
 
