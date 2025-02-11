@@ -59,14 +59,27 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const scaleFactor = Math.min(
-          800 / img.width,
-          600 / img.height
-        );
+        // Calculate dimensions that maintain aspect ratio and fit within canvas
+        const containerWidth = 800;
+        const containerHeight = 600;
+        const imgAspectRatio = img.width / img.height;
+        const containerAspectRatio = containerWidth / containerHeight;
         
+        let newWidth, newHeight;
+        
+        if (imgAspectRatio > containerAspectRatio) {
+          // Image is wider than container relative to height
+          newWidth = containerWidth;
+          newHeight = containerWidth / imgAspectRatio;
+        } else {
+          // Image is taller than container relative to width
+          newHeight = containerHeight;
+          newWidth = containerHeight * imgAspectRatio;
+        }
+
         fabricCanvas.setDimensions({
-          width: img.width * scaleFactor,
-          height: img.height * scaleFactor,
+          width: newWidth,
+          height: newHeight,
         });
 
         fabricCanvas.setBackgroundImage(e.target?.result as string, () => {
@@ -74,6 +87,11 @@ export const ImageEditor = () => {
           setOriginalImage(e.target?.result as string);
           setGeneratedImage(null);
           toast("Image uploaded successfully!");
+        }, {
+          scaleX: newWidth / img.width,
+          scaleY: newHeight / img.height,
+          originX: 'left',
+          originY: 'top'
         });
       };
       img.src = e.target?.result as string;
@@ -166,7 +184,7 @@ export const ImageEditor = () => {
           <div className="flex gap-8">
             <div className="flex-1">
               <h3 className="text-sm font-medium mb-2">Original & Mask</h3>
-              <div className="canvas-container">
+              <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center">
                 <canvas ref={canvasRef} />
               </div>
             </div>
@@ -174,7 +192,7 @@ export const ImageEditor = () => {
             {generatedImage && (
               <div className="flex-1">
                 <h3 className="text-sm font-medium mb-2">Generated Result</h3>
-                <div className="canvas-container">
+                <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center">
                   <img 
                     src={generatedImage} 
                     alt="Generated" 
