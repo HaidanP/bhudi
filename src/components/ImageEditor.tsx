@@ -1,56 +1,22 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { fabric } from "fabric";
 import { Toolbar } from "./Toolbar";
 import { PromptInput } from "./PromptInput";
+import { Canvas } from "./Canvas";
+import { Header } from "./Header";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { createBinaryMask, uploadToSupabase } from "@/utils/imageProcessing";
 
 export const ImageEditor = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [brushSize, setBrushSize] = useState(20);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      isDrawingMode: true,
-      width: 800,
-      height: 600,
-    });
-
-    canvas.freeDrawingBrush.width = brushSize;
-    canvas.freeDrawingBrush.color = "rgba(255, 255, 255, 0.5)";
-    setFabricCanvas(canvas);
-
-    return () => {
-      canvas.dispose();
-    };
-  }, []);
-
-  const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
-    const response = await fetch(base64Data);
-    const blob = await response.blob();
-    
-    const filePath = `${crypto.randomUUID()}-${filename}`;
-    const { data, error } = await supabase.storage
-      .from('images')
-      .upload(filePath, blob);
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('images')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
-  };
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
 
   const handleImageUpload = async (file: File) => {
     if (!fabricCanvas) return;
@@ -76,10 +42,8 @@ export const ImageEditor = () => {
           newWidth = containerHeight * imgAspectRatio;
         }
 
-        fabricCanvas.setDimensions({
-          width: newWidth,
-          height: newHeight,
-        });
+        setCanvasDimensions({ width: newWidth, height: newHeight });
+        fabricCanvas.setDimensions({ width: newWidth, height: newHeight });
 
         fabricCanvas.setBackgroundImage(e.target?.result as string, () => {
           fabricCanvas.renderAll();
@@ -115,38 +79,10 @@ export const ImageEditor = () => {
     }
   };
 
-  const createBinaryMask = (canvas: fabric.Canvas): string => {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width!;
-    tempCanvas.height = canvas.height!;
-    const ctx = tempCanvas.getContext('2d')!;
-
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    ctx.fillStyle = 'white';
-    const objects = canvas.getObjects();
-    objects.forEach(obj => {
-      if (obj instanceof fabric.Path) {
-        const path = obj as fabric.Path;
-        ctx.beginPath();
-        const pathCommands = path.path;
-        pathCommands?.forEach((command, i) => {
-          // Access array elements directly instead of destructuring
-          const commandType = command[0];
-          if (i === 0) {
-            ctx.moveTo(command[1], command[2]);
-          } else if (commandType === 'Q') {
-            ctx.quadraticCurveTo(command[1], command[2], command[3], command[4]);
-          } else if (commandType === 'L') {
-            ctx.lineTo(command[1], command[2]);
-          }
-        });
-        ctx.fill();
-      }
-    });
-
-    return tempCanvas.toDataURL();
+  const handleCanvasReady = (canvas: fabric.Canvas) => {
+    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = "rgba(255, 255, 255, 0.5)";
+    setFabricCanvas(canvas);
   };
 
   const handleSubmit = async (prompt: string) => {
@@ -220,14 +156,7 @@ export const ImageEditor = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <header className="text-center space-y-4">
-          <h1 className="text-4xl font-semibold tracking-tight">
-            AI Clothing Editor
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Upload an image, mask the area you want to modify, and describe the changes you want to make.
-          </p>
-        </header>
+        <Header />
 
         <div className="glass-panel rounded-xl p-8 space-y-6">
           <Toolbar
@@ -240,9 +169,11 @@ export const ImageEditor = () => {
           <div className="flex gap-8">
             <div className="flex-1">
               <h3 className="text-sm font-medium mb-2">Original & Mask</h3>
-              <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center">
-                <canvas ref={canvasRef} />
-              </div>
+              <Canvas 
+                onCanvasReady={handleCanvasReady}
+                width={canvasDimensions.width}
+                height={canvasDimensions.height}
+              />
             </div>
 
             {generatedImage && (
