@@ -52,7 +52,11 @@ serve(async (req) => {
           mask: maskImage,
           enable_prompt_sampling: true,
           num_outputs: 1,
-          seed: Math.floor(Math.random() * 1000000)
+          seed: Math.floor(Math.random() * 1000000),
+          steps: 50,
+          guidance: 7.5,
+          safety_tolerance: 1,
+          output_format: "png"
         }
       }
     )
