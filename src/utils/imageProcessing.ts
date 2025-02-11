@@ -44,7 +44,7 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
   try {
     console.log('Starting segmentation process...');
     
-    // Initialize the segmentation model
+    // Initialize the segmentation model with a model that's good at detailed segmentation
     const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
       device: 'webgpu'
     });
@@ -75,28 +75,41 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     const imageData2 = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData2.data;
 
-    // Find clothing-related segments
+    // Define clothing and exclusion labels
+    const clothingLabels = ['dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top', 'coat', 'sweater', 'shorts'];
+    const exclusionLabels = ['face', 'head', 'hair', 'person', 'neck'];
+
+    // Find clothing and exclusion segments
     const clothingSegments = segments.filter((segment: any) => {
-      const clothingLabels = ['dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top'];
       return clothingLabels.some(label => segment.label.toLowerCase().includes(label));
+    });
+
+    const exclusionSegments = segments.filter((segment: any) => {
+      return exclusionLabels.some(label => segment.label.toLowerCase().includes(label));
     });
 
     // Fill the mask with white for clothing pixels, black for others
     for (let i = 0; i < data.length; i += 4) {
       const x = (i / 4) % canvas.width;
       const y = Math.floor((i / 4) / canvas.width);
+      const pixelIndex = y * canvas.width + x;
       
       // Check if this pixel belongs to any clothing segment
       const isClothing = clothingSegments.some((segment: any) => {
-        const maskIndex = y * canvas.width + x;
-        return segment.mask.data[maskIndex] > 0.5;
+        return segment.mask.data[pixelIndex] > 0.5;
       });
 
-      // Set pixel values (white for clothing, black for background)
-      data[i] = isClothing ? 255 : 0;     // R
-      data[i + 1] = isClothing ? 255 : 0; // G
-      data[i + 2] = isClothing ? 255 : 0; // B
-      data[i + 3] = 255;                  // A
+      // Check if this pixel belongs to any exclusion segment
+      const isExcluded = exclusionSegments.some((segment: any) => {
+        return segment.mask.data[pixelIndex] > 0.3; // Lower threshold for exclusion areas
+      });
+
+      // Set pixel values (white for clothing, black for background or excluded areas)
+      const shouldBeWhite = isClothing && !isExcluded;
+      data[i] = shouldBeWhite ? 255 : 0;     // R
+      data[i + 1] = shouldBeWhite ? 255 : 0; // G
+      data[i + 2] = shouldBeWhite ? 255 : 0; // B
+      data[i + 3] = 255;                     // A
     }
 
     ctx.putImageData(imageData2, 0, 0);
