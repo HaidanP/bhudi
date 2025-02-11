@@ -56,11 +56,40 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       throw new Error(`Error generating mask: ${response.error.message}`);
     }
 
-    // The model returns a URL to the generated mask
-    const maskUrl = response.data.output;
+    // The model returns an array of URLs, we want the first one (regular mask)
+    const maskUrl = Array.isArray(response.data.output) ? response.data.output[0] : response.data.output;
     
-    // Convert the mask URL to base64
-    const maskResponse = await fetch(maskUrl);
+    if (!maskUrl) {
+      throw new Error('No mask URL returned from the model');
+    }
+
+    console.log('Generated mask URL:', maskUrl);
+
+    // Add retry logic for fetching the mask
+    const maxRetries = 3;
+    let retryCount = 0;
+    let maskResponse;
+
+    while (retryCount < maxRetries) {
+      try {
+        maskResponse = await fetch(maskUrl);
+        if (maskResponse.ok) break;
+        
+        // If not successful, wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        retryCount++;
+      } catch (error) {
+        console.error(`Attempt ${retryCount + 1} failed:`, error);
+        if (retryCount === maxRetries - 1) throw error;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        retryCount++;
+      }
+    }
+
+    if (!maskResponse || !maskResponse.ok) {
+      throw new Error(`Failed to fetch mask after ${maxRetries} attempts`);
+    }
+
     const maskBlob = await maskResponse.blob();
     const maskBase64 = await new Promise<string>((resolve) => {
       const reader = new FileReader();

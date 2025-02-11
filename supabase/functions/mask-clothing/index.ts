@@ -38,6 +38,7 @@ serve(async (req) => {
 
     console.log("Generating mask for image:", imageUrl)
 
+    // Run the model and wait for completion
     const output = await replicate.run(
       "ahmdyassr/mask-clothing:1c60fd50bf0e5fb2ccbd93403cf163d5586ab8939139167ac82d29ebb047e84f",
       {
