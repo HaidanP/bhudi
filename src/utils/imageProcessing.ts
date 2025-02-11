@@ -3,21 +3,35 @@ import { fabric } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
-  const response = await fetch(base64Data);
-  const blob = await response.blob();
+  // Convert base64 to blob
+  const base64Response = await fetch(base64Data);
+  const blob = await base64Response.blob();
   
   const filePath = `${crypto.randomUUID()}-${filename}`;
-  const { data, error } = await supabase.storage
+  
+  // Upload the file
+  const { error: uploadError } = await supabase.storage
     .from('images')
-    .upload(filePath, blob);
+    .upload(filePath, blob, {
+      contentType: 'image/png',
+      upsert: false
+    });
 
-  if (error) throw error;
+  if (uploadError) {
+    console.error('Upload error:', uploadError);
+    throw uploadError;
+  }
 
-  const { data: { publicUrl } } = supabase.storage
+  // Get the public URL
+  const { data } = await supabase.storage
     .from('images')
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
 
-  return publicUrl;
+  if (!data?.signedUrl) {
+    throw new Error('Could not get signed URL for uploaded image');
+  }
+
+  return data.signedUrl;
 };
 
 export const createBinaryMask = (canvas: fabric.Canvas): string => {
