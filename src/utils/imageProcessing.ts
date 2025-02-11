@@ -73,16 +73,20 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     maskCtx.fillStyle = 'black';
     maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-    // Get colored parts data
-    const coloredPartImage = bodyPix.toColoredPartMask(segmentation);
+    // Create binary mask from part segmentation
     const bytes = new Uint8ClampedArray(canvas.width * canvas.height * 4);
 
     for (let i = 0; i < segmentation.data.length; i++) {
       const partId = segmentation.data[i];
-      const partName = segmentation.allPoses[0]?.bodyParts[partId]?.part;
       
-      // Check if this part should be included in the mask
-      if (partName && CLOTHING_PARTS.includes(partName)) {
+      // BodyPix uses specific part IDs for different body parts
+      // 0: left_face, 1: right_face, 2: left_upper_arm_front, 3: left_upper_arm_back, 
+      // 4: right_upper_arm_front, 5: right_upper_arm_back, 6: left_lower_arm_front, 
+      // 7: left_lower_arm_back, 8: right_lower_arm_front, 9: right_lower_arm_back,
+      // 10: left_hand, 11: right_hand, 12: torso_front, 13: torso_back
+      const isClothing = [2, 3, 4, 5, 6, 7, 8, 9, 12, 13].includes(partId);
+      
+      if (isClothing) {
         const j = i * 4;
         bytes[j] = 255;     // R
         bytes[j + 1] = 255; // G
