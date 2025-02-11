@@ -1,38 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import * as deeplab from '@tensorflow-models/deeplab';
-import * as tf from '@tensorflow/tfjs';
 
 const MAX_IMAGE_DIMENSION = 512; // Limit image size to avoid memory issues
-
-function resizeImageIfNeeded(canvas: HTMLCanvasElement): HTMLCanvasElement {
-  const width = canvas.width;
-  const height = canvas.height;
-  
-  if (width <= MAX_IMAGE_DIMENSION && height <= MAX_IMAGE_DIMENSION) {
-    return canvas;
-  }
-
-  const resizeCanvas = document.createElement('canvas');
-  let newWidth = width;
-  let newHeight = height;
-
-  if (width > height) {
-    newWidth = MAX_IMAGE_DIMENSION;
-    newHeight = Math.round((height * MAX_IMAGE_DIMENSION) / width);
-  } else {
-    newHeight = MAX_IMAGE_DIMENSION;
-    newWidth = Math.round((width * MAX_IMAGE_DIMENSION) / height);
-  }
-
-  resizeCanvas.width = newWidth;
-  resizeCanvas.height = newHeight;
-  const ctx = resizeCanvas.getContext('2d')!;
-  ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
-  
-  console.log(`Resized image from ${width}x${height} to ${newWidth}x${newHeight}`);
-  return resizeCanvas;
-}
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
@@ -70,78 +39,37 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
 
 export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<string> => {
   try {
-    console.log('Starting segmentation process...');
+    console.log('Starting mask generation process...');
     
-    // Ensure TensorFlow backend is initialized
-    await tf.ready();
-    
-    // Load the DeepLab model
-    const model = await deeplab.load({
-      base: 'pascal',
-      quantizationBytes: 2
+    // Upload the image to Supabase first
+    const imageUrl = await uploadToSupabase(
+      canvas.toDataURL(),
+      'original.png'
+    );
+
+    // Call the Replicate model through our edge function
+    const response = await supabase.functions.invoke('mask-clothing', {
+      body: { imageUrl },
     });
-    
-    console.log('Model loaded successfully');
 
-    // Create an image element from the canvas
-    const img = new Image();
-    img.src = canvas.toDataURL();
-    await new Promise(resolve => img.onload = resolve);
-
-    // Run segmentation
-    console.log('Running segmentation...');
-    const segmentation = await model.segment(img);
-
-    // Log unique class indices to debug
-    const uniqueClasses = new Set(segmentation.segmentationMap);
-    console.log('Detected classes:', Array.from(uniqueClasses));
-
-    // Create a new canvas for the mask
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = canvas.width;
-    maskCanvas.height = canvas.height;
-    const ctx = maskCanvas.getContext('2d');
-
-    if (!ctx) {
-      throw new Error('Could not get canvas context');
+    if (response.error) {
+      throw new Error(`Error generating mask: ${response.error.message}`);
     }
 
-    // Create binary mask
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
-    const data = imageData.data;
+    // The model returns a URL to the generated mask
+    const maskUrl = response.data.output;
     
-    // Update clothing-related classes in PASCAL VOC dataset
-    // PASCAL VOC classes that might contain clothing:
-    // 15: person
-    const clothingClassIndices = new Set([15]); 
+    // Convert the mask URL to base64
+    const maskResponse = await fetch(maskUrl);
+    const maskBlob = await maskResponse.blob();
+    const maskBase64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(maskBlob);
+    });
 
-    // Convert the segmentation to binary (white for clothing, black for background)
-    const segmentationData = segmentation.segmentationMap;
-    let hasClothing = false;
-    
-    for (let i = 0; i < canvas.width * canvas.height; i++) {
-      const classIndex = segmentationData[i];
-      const isClothing = clothingClassIndices.has(classIndex);
-      
-      if (isClothing) hasClothing = true;
-      
-      const baseIndex = i * 4;
-      const value = isClothing ? 255 : 0;
-      
-      data[baseIndex] = value;     // R
-      data[baseIndex + 1] = value; // G
-      data[baseIndex + 2] = value; // B
-      data[baseIndex + 3] = 255;   // A (always fully opaque)
-    }
-
-    console.log('Has clothing pixels:', hasClothing);
-
-    // Put the binary mask on the canvas
-    ctx.putImageData(imageData, 0, 0);
-    console.log('Mask created successfully');
-
-    // Convert to base64
-    return maskCanvas.toDataURL('image/png');
+    console.log('Mask generated successfully');
+    return maskBase64;
   } catch (error) {
     console.error('Error in createBinaryMask:', error);
     throw error;
