@@ -30,7 +30,7 @@ serve(async (req) => {
     console.log("Text prompt:", text_prompt)
 
     const prediction = await replicate.run(
-      "fofr/clipseg:28b5242dabd55750fea673cd99f5f93f05726cc69cdb3a4a41b80ee933dcf0e2",
+      "timothybrooks/clipseg:50a6ff40cc52cfd47b251f429652fa676f6c0a7320905147c84a28160c746c75",
       {
         input: {
           image: image,
