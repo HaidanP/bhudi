@@ -78,8 +78,8 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     // Resize image if needed to prevent memory issues
     const processCanvas = resizeImageIfNeeded(canvas);
     
-    // Initialize the segmentation model with WASM
-    const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
+    // Use a model specialized for semantic segmentation
+    const segmenter = await pipeline('image-segmentation', 'mattmdjaga/segformer_b2_clothes', {
       device: 'wasm'
     });
 
@@ -89,10 +89,7 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
 
     // Process the image with the segmentation model
     console.log('Running segmentation...');
-    const segments = await segmenter(imageData, {
-      threshold: 0.5,
-    });
-
+    const segments = await segmenter(imageData);
     console.log('Segmentation complete:', segments);
 
     // Create a new canvas for the mask at original size
@@ -109,61 +106,32 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     const imageData2 = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData2.data;
 
-    // Define clothing and exclusion labels with broader terms
-    const clothingLabels = [
-      'dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top', 'coat', 
-      'sweater', 'shorts', 'suit', 'uniform', 'cloth', 'apparel', 'sleeve',
-      'textile', 'collar', 'pocket', 'button', 'zipper'
-    ];
-    const exclusionLabels = ['face', 'head', 'hair', 'person', 'neck', 'skin'];
-
-    // Find clothing segments with lower threshold
-    const clothingSegments = segments.filter((segment: any) => {
-      return clothingLabels.some(label => 
-        segment.label.toLowerCase().includes(label.toLowerCase())
-      );
-    });
-
-    if (clothingSegments.length === 0) {
-      // If no clothing detected, try to use person segmentation as fallback
-      const personSegments = segments.filter((segment: any) => 
-        segment.label.toLowerCase().includes('person')
-      );
-      clothingSegments.push(...personSegments);
-    }
-
-    const exclusionSegments = segments.filter((segment: any) => {
-      return exclusionLabels.some(label => 
-        segment.label.toLowerCase().includes(label.toLowerCase())
-      );
-    });
-
     // Calculate scale factors if image was resized
     const scaleX = canvas.width / processCanvas.width;
     const scaleY = canvas.height / processCanvas.height;
 
-    // Fill the mask with white for clothing pixels, black for others
-    for (let i = 0; i < data.length; i += 4) {
-      const x = Math.floor(((i / 4) % canvas.width) / scaleX);
-      const y = Math.floor(Math.floor((i / 4) / canvas.width) / scaleY);
-      const pixelIndex = y * processCanvas.width + x;
-      
-      // Check if this pixel belongs to any clothing segment with a lower threshold
-      const isClothing = clothingSegments.some((segment: any) => {
-        return segment.mask.data[pixelIndex] > 0.2; // Lower threshold to catch more clothing
-      });
+    // Fill the mask based on the largest segment (since this model is more accurate)
+    let largestSegment = segments[0];
+    for (const segment of segments) {
+      if (segment.score > (largestSegment?.score || 0)) {
+        largestSegment = segment;
+      }
+    }
 
-      // Check if this pixel belongs to any exclusion segment
-      const isExcluded = exclusionSegments.some((segment: any) => {
-        return segment.mask.data[pixelIndex] > 0.4; // Higher threshold for exclusions
-      });
-
-      // Set pixel values (white for clothing, black for background or excluded areas)
-      const shouldBeWhite = isClothing && !isExcluded;
-      data[i] = shouldBeWhite ? 255 : 0;     // R
-      data[i + 1] = shouldBeWhite ? 255 : 0; // G
-      data[i + 2] = shouldBeWhite ? 255 : 0; // B
-      data[i + 3] = 255;                     // A
+    if (largestSegment) {
+      // Fill the mask with white for the detected object
+      for (let i = 0; i < data.length; i += 4) {
+        const x = Math.floor(((i / 4) % canvas.width) / scaleX);
+        const y = Math.floor(Math.floor((i / 4) / canvas.width) / scaleY);
+        const pixelIndex = y * processCanvas.width + x;
+        
+        const isObject = largestSegment.mask.data[pixelIndex] > 0.3;
+        
+        data[i] = isObject ? 255 : 0;     // R
+        data[i + 1] = isObject ? 255 : 0; // G
+        data[i + 2] = isObject ? 255 : 0; // B
+        data[i + 3] = 255;                // A
+      }
     }
 
     ctx.putImageData(imageData2, 0, 0);
