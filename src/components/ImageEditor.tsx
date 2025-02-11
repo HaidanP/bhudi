@@ -14,6 +14,7 @@ export const ImageEditor = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -59,6 +60,9 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        // Store original dimensions
+        setOriginalDimensions({ width: img.width, height: img.height });
+
         // Calculate dimensions that maintain aspect ratio and fit within canvas
         const containerWidth = 800;
         const containerHeight = 600;
@@ -117,7 +121,7 @@ export const ImageEditor = () => {
   };
 
   const handleSubmit = async (prompt: string) => {
-    if (!fabricCanvas || !originalImage) {
+    if (!fabricCanvas || !originalImage || !originalDimensions) {
       toast.error("Please upload an image first!");
       return;
     }
@@ -125,16 +129,42 @@ export const ImageEditor = () => {
     setIsProcessing(true);
     
     try {
-      // Upload original image and mask to Supabase
+      // Create a temporary canvas to scale the mask to original dimensions
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = originalDimensions.width;
+      tempCanvas.height = originalDimensions.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        throw new Error("Could not create temporary canvas context");
+      }
+
+      // Get the current mask
+      const maskDataUrl = fabricCanvas.toDataURL();
+      const maskImg = new Image();
+      
+      await new Promise((resolve, reject) => {
+        maskImg.onload = resolve;
+        maskImg.onerror = reject;
+        maskImg.src = maskDataUrl;
+      });
+
+      // Draw the mask at original dimensions
+      tempCtx.drawImage(
+        maskImg,
+        0, 0,
+        originalDimensions.width,
+        originalDimensions.height
+      );
+
+      // Upload original image and scaled mask to Supabase
       const originalImageUrl = await uploadToSupabase(
         originalImage,
         'original.png'
       );
 
-      // Get the mask data
-      const maskDataUrl = fabricCanvas.toDataURL();
-      const maskImageUrl = await uploadToSupabase(
-        maskDataUrl,
+      const scaledMaskUrl = await uploadToSupabase(
+        tempCanvas.toDataURL(),
         'mask.png'
       );
 
@@ -142,7 +172,7 @@ export const ImageEditor = () => {
       const { data, error } = await supabase.functions.invoke('process-image', {
         body: {
           originalImage: originalImageUrl,
-          maskImage: maskImageUrl,
+          maskImage: scaledMaskUrl,
           prompt
         },
       });
