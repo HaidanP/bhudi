@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import * as bodySegmentation from '@tensorflow-models/body-segmentation';
+import * as deeplab from '@tensorflow-models/deeplab';
 import * as tf from '@tensorflow/tfjs';
 
 const MAX_IMAGE_DIMENSION = 512; // Limit image size to avoid memory issues
@@ -75,14 +75,11 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     // Ensure TensorFlow backend is initialized
     await tf.ready();
     
-    // Load the body segmentation model
-    const model = await bodySegmentation.createSegmenter(
-      bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation,
-      {
-        runtime: 'tfjs',
-        modelType: 'general'
-      }
-    );
+    // Load the DeepLab model
+    const model = await deeplab.load({
+      base: 'pascal',
+      quantizationBytes: 2
+    });
     
     console.log('Model loaded successfully');
 
@@ -93,14 +90,7 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
 
     // Run segmentation
     console.log('Running segmentation...');
-    const segmentation = await model.segmentPeople(img, {
-      multiSegmentation: false,
-      segmentBodyParts: false
-    });
-
-    if (!segmentation.length) {
-      throw new Error('No segmentation found');
-    }
+    const segmentation = await model.segment(img);
 
     // Create a new canvas for the mask
     const maskCanvas = document.createElement('canvas');
@@ -112,25 +102,26 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       throw new Error('Could not get canvas context');
     }
 
-    // Get the segmentation mask
-    const mask = segmentation[0];
-    const maskData = await mask.mask.toImageData();
-    
     // Create binary mask
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData.data;
     
-    // Convert the mask to binary (white for person, black for background)
-    for (let i = 0; i < maskData.data.length; i += 4) {
-      // The alpha channel contains the mask value
-      const maskValue = maskData.data[i + 3] / 255;
+    // The clothing-related classes in PASCAL VOC dataset
+    const clothingClassIndices = new Set([15]); // 15 is "person" which includes clothing
+
+    // Convert the segmentation to binary (white for clothing, black for background)
+    const segmentationData = segmentation.segmentationMap;
+    for (let i = 0; i < canvas.width * canvas.height; i++) {
+      const classIndex = segmentationData[i];
+      const isClothing = clothingClassIndices.has(classIndex);
       
-      // Set RGB values to white or black based on mask
-      const value = maskValue > 0.1 ? 255 : 0;
-      data[i] = value;     // R
-      data[i + 1] = value; // G
-      data[i + 2] = value; // B
-      data[i + 3] = 255;   // A (always fully opaque)
+      const baseIndex = i * 4;
+      const value = isClothing ? 255 : 0;
+      
+      data[baseIndex] = value;     // R
+      data[baseIndex + 1] = value; // G
+      data[baseIndex + 2] = value; // B
+      data[baseIndex + 3] = 255;   // A (always fully opaque)
     }
 
     // Put the binary mask on the canvas
