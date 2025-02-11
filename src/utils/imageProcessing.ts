@@ -92,6 +92,10 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     console.log('Running segmentation...');
     const segmentation = await model.segment(img);
 
+    // Log unique class indices to debug
+    const uniqueClasses = new Set(segmentation.segmentationMap);
+    console.log('Detected classes:', Array.from(uniqueClasses));
+
     // Create a new canvas for the mask
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = canvas.width;
@@ -106,14 +110,20 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData.data;
     
-    // The clothing-related classes in PASCAL VOC dataset
-    const clothingClassIndices = new Set([15]); // 15 is "person" which includes clothing
+    // Update clothing-related classes in PASCAL VOC dataset
+    // PASCAL VOC classes that might contain clothing:
+    // 15: person
+    const clothingClassIndices = new Set([15]); 
 
     // Convert the segmentation to binary (white for clothing, black for background)
     const segmentationData = segmentation.segmentationMap;
+    let hasClothing = false;
+    
     for (let i = 0; i < canvas.width * canvas.height; i++) {
       const classIndex = segmentationData[i];
       const isClothing = clothingClassIndices.has(classIndex);
+      
+      if (isClothing) hasClothing = true;
       
       const baseIndex = i * 4;
       const value = isClothing ? 255 : 0;
@@ -123,6 +133,8 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       data[baseIndex + 2] = value; // B
       data[baseIndex + 3] = 255;   // A (always fully opaque)
     }
+
+    console.log('Has clothing pixels:', hasClothing);
 
     // Put the binary mask on the canvas
     ctx.putImageData(imageData, 0, 0);
