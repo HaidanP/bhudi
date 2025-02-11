@@ -43,36 +43,27 @@ serve(async (req) => {
     }
 
     console.log("Processing image with prompt:", prompt)
-    const prediction = await replicate.predictions.create({
-      version: "e8a51197f37c41e7c0548fb30f78ab6a481aad99b4cae4f740f57c5d55ffbc96",
-      input: {
-        prompt: prompt,
-        image: originalImage,
-        mask: maskImage,
-        enable_prompt_sampling: true,
-        num_outputs: 1,
-        seed: Math.floor(Math.random() * 1000000),
-        steps: 50,
-        guidance: 7.5,
-        safety_tolerance: 1,
-        output_format: "png"
+    console.log("Original image URL:", originalImage)
+    console.log("Mask image URL:", maskImage)
+
+    const prediction = await replicate.run(
+      "black-forest-labs/flux-fill-pro",
+      {
+        input: {
+          prompt: prompt,
+          image: originalImage,
+          mask: maskImage,
+          seed: Math.floor(Math.random() * 1000000),
+          steps: 50,
+          guidance: 60,
+          safety_tolerance: 2,
+          output_format: "png"
+        }
       }
-    })
+    )
 
-    // Wait for the prediction to complete
-    let finalPrediction = prediction
-    while (finalPrediction.status !== "succeeded" && finalPrediction.status !== "failed") {
-      console.log("Waiting for prediction to complete. Current status:", finalPrediction.status)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second before checking again
-      finalPrediction = await replicate.predictions.get(prediction.id)
-    }
-
-    if (finalPrediction.status === "failed") {
-      throw new Error("Prediction failed: " + finalPrediction.error)
-    }
-
-    console.log("Generation complete. Output:", finalPrediction.output)
-    return new Response(JSON.stringify({ output: finalPrediction.output[0] }), {
+    console.log("Generation complete. Output:", prediction)
+    return new Response(JSON.stringify({ output: prediction }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
