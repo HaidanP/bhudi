@@ -53,11 +53,12 @@ serve(async (req) => {
           prompt: prompt,
           image: originalImage,
           mask: maskImage,
-          seed: Math.floor(Math.random() * 1000000),
+          seed: 0,
           steps: 50,
+          prompt_upsampling: true,
           guidance: 60,
           safety_tolerance: 2,
-          output_format: "png"
+          output_format: "jpg"
         }
       }
     )

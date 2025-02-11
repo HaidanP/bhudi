@@ -46,12 +46,14 @@ export const createBinaryMask = (canvas: fabric.Canvas): string => {
   tempCanvas.height = canvas.height!;
   const ctx = tempCanvas.getContext('2d')!;
 
-  // Set black background (areas to preserve)
-  ctx.fillStyle = 'black';
+  // Set white background (areas to preserve)
+  ctx.fillStyle = 'white';
   ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-  // Set white for the mask (areas to inpaint)
-  ctx.fillStyle = 'white';
+  // Set black for the mask (areas to inpaint)
+  ctx.fillStyle = 'black';
+  ctx.globalAlpha = 1.0; // Ensure full opacity for mask
+  
   const objects = canvas.getObjects();
   objects.forEach(obj => {
     if (obj instanceof fabric.Path) {
