@@ -30,35 +30,16 @@ serve(async (req) => {
       auth: REPLICATE_API_KEY,
     })
 
-    const { originalImage, maskImage, prompt } = await req.json()
-
-    // If it's a status check request
-    if (originalImage.predictionId) {
-      console.log("Checking status for prediction:", originalImage.predictionId)
-      const prediction = await replicate.predictions.get(originalImage.predictionId)
-      console.log("Status check response:", prediction)
-      return new Response(JSON.stringify(prediction), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    const { originalImage, prompt } = await req.json()
 
     console.log("Processing image with prompt:", prompt)
     console.log("Original image URL:", originalImage)
-    console.log("Mask image URL:", maskImage)
 
     const prediction = await replicate.run(
-      "black-forest-labs/flux-fill-pro",
+      "ahmdyassr/mask-clothing:1c60fd50bf0e5fb2ccbd93403cf163d5586ab8939139167ac82d29ebb047e84f",
       {
         input: {
-          prompt: prompt,
-          image: originalImage,
-          mask: maskImage,
-          seed: 0,
-          steps: 50,
-          prompt_upsampling: true,
-          guidance: 60,
-          safety_tolerance: 2,
-          output_format: "jpg"
+          image: originalImage
         }
       }
     )
