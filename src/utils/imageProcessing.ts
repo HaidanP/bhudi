@@ -6,6 +6,37 @@ import { pipeline, env } from '@huggingface/transformers';
 env.allowLocalModels = false;
 env.useBrowserCache = false;
 
+const MAX_IMAGE_DIMENSION = 512; // Limit image size to avoid memory issues
+
+function resizeImageIfNeeded(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  if (width <= MAX_IMAGE_DIMENSION && height <= MAX_IMAGE_DIMENSION) {
+    return canvas;
+  }
+
+  const resizeCanvas = document.createElement('canvas');
+  let newWidth = width;
+  let newHeight = height;
+
+  if (width > height) {
+    newWidth = MAX_IMAGE_DIMENSION;
+    newHeight = Math.round((height * MAX_IMAGE_DIMENSION) / width);
+  } else {
+    newHeight = MAX_IMAGE_DIMENSION;
+    newWidth = Math.round((width * MAX_IMAGE_DIMENSION) / height);
+  }
+
+  resizeCanvas.width = newWidth;
+  resizeCanvas.height = newHeight;
+  const ctx = resizeCanvas.getContext('2d')!;
+  ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
+  
+  console.log(`Resized image from ${width}x${height} to ${newWidth}x${newHeight}`);
+  return resizeCanvas;
+}
+
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
     const base64Response = await fetch(base64Data);
@@ -44,13 +75,16 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
   try {
     console.log('Starting segmentation process...');
     
-    // Initialize the segmentation model with WASM instead of WebGPU
+    // Resize image if needed to prevent memory issues
+    const processCanvas = resizeImageIfNeeded(canvas);
+    
+    // Initialize the segmentation model with WASM
     const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
       device: 'wasm'
     });
 
     // Get image data from canvas
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    const imageData = processCanvas.toDataURL('image/jpeg', 0.8);
     console.log('Image converted to data URL');
 
     // Process the image with the segmentation model
@@ -61,7 +95,7 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
 
     console.log('Segmentation complete:', segments);
 
-    // Create a new canvas for the mask
+    // Create a new canvas for the mask at original size
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = canvas.width;
     maskCanvas.height = canvas.height;
@@ -88,11 +122,15 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       return exclusionLabels.some(label => segment.label.toLowerCase().includes(label));
     });
 
+    // Calculate scale factors if image was resized
+    const scaleX = canvas.width / processCanvas.width;
+    const scaleY = canvas.height / processCanvas.height;
+
     // Fill the mask with white for clothing pixels, black for others
     for (let i = 0; i < data.length; i += 4) {
-      const x = (i / 4) % canvas.width;
-      const y = Math.floor((i / 4) / canvas.width);
-      const pixelIndex = y * canvas.width + x;
+      const x = Math.floor(((i / 4) % canvas.width) / scaleX);
+      const y = Math.floor(Math.floor((i / 4) / canvas.width) / scaleY);
+      const pixelIndex = y * processCanvas.width + x;
       
       // Check if this pixel belongs to any clothing segment
       const isClothing = clothingSegments.some((segment: any) => {
