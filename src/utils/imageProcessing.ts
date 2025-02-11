@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import * as deeplab from '@tensorflow-models/deeplab';
 import * as tf from '@tensorflow/tfjs';
 
 const MAX_IMAGE_DIMENSION = 512; // Limit image size to avoid memory issues
@@ -73,35 +74,27 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     
     // Ensure TensorFlow backend is initialized
     await tf.ready();
-    console.log('TensorFlow backend initialized');
-
-    // Load the pre-trained model
-    const model = await tf.loadGraphModel(
-      'https://tfhub.dev/tensorflow/tfjs-model/ssd_mobilenet_v2/1/default/1',
-      { fromTFHub: true }
-    );
+    
+    // Load the DeepLab model
+    const model = await deeplab.load({
+      base: 'pascal',
+      quantizationBytes: 2
+    });
     
     console.log('Model loaded successfully');
 
-    // Create a tensor from the canvas
+    // Create an image element from the canvas
     const img = new Image();
     img.src = canvas.toDataURL();
     await new Promise(resolve => img.onload = resolve);
 
-    // Prepare the input tensor
-    const tensor = tf.browser.fromPixels(img)
-      .resizeBilinear([300, 300])
-      .expandDims()
-      .toFloat();
+    // Run segmentation
+    console.log('Running segmentation...');
+    const segmentation = await model.segment(img);
 
-    // Run object detection
-    console.log('Running detection...');
-    const predictions = await model.executeAsync(tensor) as tf.Tensor[];
-
-    // Get detection boxes and classes
-    const boxes = predictions[1].arraySync()[0];
-    const scores = predictions[2].arraySync()[0];
-    const classes = predictions[3].arraySync()[0];
+    // Log unique class indices to debug
+    const uniqueClasses = new Set(segmentation.segmentationMap);
+    console.log('Detected classes:', Array.from(uniqueClasses));
 
     // Create a new canvas for the mask
     const maskCanvas = document.createElement('canvas');
@@ -116,42 +109,32 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     // Create binary mask
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData.data;
+    
+    // Update clothing-related classes in PASCAL VOC dataset
+    // PASCAL VOC classes that might contain clothing:
+    // 15: person
+    const clothingClassIndices = new Set([15]); 
 
-    // Initialize mask data to black
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = 0;     // R
-      data[i + 1] = 0; // G
-      data[i + 2] = 0; // B
-      data[i + 3] = 255; // A
+    // Convert the segmentation to binary (white for clothing, black for background)
+    const segmentationData = segmentation.segmentationMap;
+    let hasClothing = false;
+    
+    for (let i = 0; i < canvas.width * canvas.height; i++) {
+      const classIndex = segmentationData[i];
+      const isClothing = clothingClassIndices.has(classIndex);
+      
+      if (isClothing) hasClothing = true;
+      
+      const baseIndex = i * 4;
+      const value = isClothing ? 255 : 0;
+      
+      data[baseIndex] = value;     // R
+      data[baseIndex + 1] = value; // G
+      data[baseIndex + 2] = value; // B
+      data[baseIndex + 3] = 255;   // A (always fully opaque)
     }
 
-    // Draw detected objects on the mask
-    for (let i = 0; i < scores.length; i++) {
-      if (scores[i] > 0.5) { // Only consider detections with confidence > 50%
-        const [y1, x1, y2, x2] = boxes[i];
-        const x = Math.floor(x1 * canvas.width);
-        const y = Math.floor(y1 * canvas.height);
-        const width = Math.floor((x2 - x1) * canvas.width);
-        const height = Math.floor((y2 - y1) * canvas.height);
-
-        // Fill the detected region with white
-        for (let py = y; py < y + height; py++) {
-          for (let px = x; px < x + width; px++) {
-            if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
-              const idx = (py * canvas.width + px) * 4;
-              data[idx] = 255;     // R
-              data[idx + 1] = 255; // G
-              data[idx + 2] = 255; // B
-              data[idx + 3] = 255; // A
-            }
-          }
-        }
-      }
-    }
-
-    // Clean up tensors
-    tensor.dispose();
-    predictions.forEach(t => t.dispose());
+    console.log('Has clothing pixels:', hasClothing);
 
     // Put the binary mask on the canvas
     ctx.putImageData(imageData, 0, 0);
