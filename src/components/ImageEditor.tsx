@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Toolbar } from "./Toolbar";
@@ -35,7 +34,6 @@ export const ImageEditor = () => {
   }, []);
 
   const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
-    // Convert base64 to blob
     const response = await fetch(base64Data);
     const blob = await response.blob();
     
@@ -60,10 +58,8 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        // Store original dimensions
         setOriginalDimensions({ width: img.width, height: img.height });
 
-        // Calculate dimensions that maintain aspect ratio and fit within canvas
         const containerWidth = 800;
         const containerHeight = 600;
         const imgAspectRatio = img.width / img.height;
@@ -72,11 +68,9 @@ export const ImageEditor = () => {
         let newWidth, newHeight;
         
         if (imgAspectRatio > containerAspectRatio) {
-          // Image is wider than container relative to height
           newWidth = containerWidth;
           newHeight = containerWidth / imgAspectRatio;
         } else {
-          // Image is taller than container relative to width
           newHeight = containerHeight;
           newWidth = containerHeight * imgAspectRatio;
         }
@@ -120,6 +114,39 @@ export const ImageEditor = () => {
     }
   };
 
+  const createBinaryMask = (canvas: fabric.Canvas): string => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width!;
+    tempCanvas.height = canvas.height!;
+    const ctx = tempCanvas.getContext('2d')!;
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    ctx.fillStyle = 'white';
+    const objects = canvas.getObjects();
+    objects.forEach(obj => {
+      if (obj instanceof fabric.Path) {
+        const path = obj as fabric.Path;
+        ctx.beginPath();
+        const pathCommands = path.path;
+        pathCommands?.forEach((command, i) => {
+          const [type, ...points] = command;
+          if (i === 0) {
+            ctx.moveTo(points[0], points[1]);
+          } else if (type === 'Q') {
+            ctx.quadraticCurveTo(points[0], points[1], points[2], points[3]);
+          } else if (type === 'L') {
+            ctx.lineTo(points[0], points[1]);
+          }
+        });
+        ctx.fill();
+      }
+    });
+
+    return tempCanvas.toDataURL();
+  };
+
   const handleSubmit = async (prompt: string) => {
     if (!fabricCanvas || !originalImage || !originalDimensions) {
       toast.error("Please upload an image first!");
@@ -129,7 +156,8 @@ export const ImageEditor = () => {
     setIsProcessing(true);
     
     try {
-      // Create a temporary canvas to scale the mask to original dimensions
+      const maskDataUrl = createBinaryMask(fabricCanvas);
+      
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = originalDimensions.width;
       tempCanvas.height = originalDimensions.height;
@@ -139,17 +167,15 @@ export const ImageEditor = () => {
         throw new Error("Could not create temporary canvas context");
       }
 
-      // Get the current mask
-      const maskDataUrl = fabricCanvas.toDataURL();
       const maskImg = new Image();
-      
       await new Promise((resolve, reject) => {
         maskImg.onload = resolve;
         maskImg.onerror = reject;
         maskImg.src = maskDataUrl;
       });
 
-      // Draw the mask at original dimensions
+      tempCtx.fillStyle = 'black';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tempCtx.drawImage(
         maskImg,
         0, 0,
@@ -157,7 +183,6 @@ export const ImageEditor = () => {
         originalDimensions.height
       );
 
-      // Upload original image and scaled mask to Supabase
       const originalImageUrl = await uploadToSupabase(
         originalImage,
         'original.png'
@@ -168,7 +193,6 @@ export const ImageEditor = () => {
         'mask.png'
       );
 
-      // Call our edge function
       const { data, error } = await supabase.functions.invoke('process-image', {
         body: {
           originalImage: originalImageUrl,
