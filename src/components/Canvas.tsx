@@ -10,6 +10,7 @@ interface CanvasProps {
 
 export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -20,12 +21,22 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       height,
     });
 
+    fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);
 
     return () => {
       canvas.dispose();
+      fabricCanvasRef.current = null;
     };
-  }, [onCanvasReady, width, height]);
+  }, []);
+
+  // Handle dimension changes separately
+  useEffect(() => {
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.setDimensions({ width, height });
+      fabricCanvasRef.current.renderAll();
+    }
+  }, [width, height]);
 
   return (
     <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center">

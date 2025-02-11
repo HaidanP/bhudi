@@ -42,20 +42,21 @@ export const ImageEditor = () => {
           newWidth = containerHeight * imgAspectRatio;
         }
 
+        // Update dimensions first
         setCanvasDimensions({ width: newWidth, height: newHeight });
-        fabricCanvas.setDimensions({ width: newWidth, height: newHeight });
 
-        fabricCanvas.setBackgroundImage(e.target?.result as string, () => {
-          fabricCanvas.renderAll();
-          setOriginalImage(e.target?.result as string);
-          setGeneratedImage(null);
-          toast("Image uploaded successfully!");
-        }, {
+        // Set background image after dimensions are updated
+        const imgUrl = e.target?.result as string;
+        fabricCanvas.setBackgroundImage(imgUrl, fabricCanvas.renderAll.bind(fabricCanvas), {
           scaleX: newWidth / img.width,
           scaleY: newHeight / img.height,
           originX: 'left',
           originY: 'top'
         });
+
+        setOriginalImage(imgUrl);
+        setGeneratedImage(null);
+        toast("Image uploaded successfully!");
       };
       img.src = e.target?.result as string;
     };
