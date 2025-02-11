@@ -109,17 +109,33 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     const imageData2 = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData2.data;
 
-    // Define clothing and exclusion labels
-    const clothingLabels = ['dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top', 'coat', 'sweater', 'shorts'];
-    const exclusionLabels = ['face', 'head', 'hair', 'person', 'neck'];
+    // Define clothing and exclusion labels with broader terms
+    const clothingLabels = [
+      'dress', 'pants', 'shirt', 'jacket', 'clothing', 'skirt', 'top', 'coat', 
+      'sweater', 'shorts', 'suit', 'uniform', 'cloth', 'apparel', 'sleeve',
+      'textile', 'collar', 'pocket', 'button', 'zipper'
+    ];
+    const exclusionLabels = ['face', 'head', 'hair', 'person', 'neck', 'skin'];
 
-    // Find clothing and exclusion segments
+    // Find clothing segments with lower threshold
     const clothingSegments = segments.filter((segment: any) => {
-      return clothingLabels.some(label => segment.label.toLowerCase().includes(label));
+      return clothingLabels.some(label => 
+        segment.label.toLowerCase().includes(label.toLowerCase())
+      );
     });
 
+    if (clothingSegments.length === 0) {
+      // If no clothing detected, try to use person segmentation as fallback
+      const personSegments = segments.filter((segment: any) => 
+        segment.label.toLowerCase().includes('person')
+      );
+      clothingSegments.push(...personSegments);
+    }
+
     const exclusionSegments = segments.filter((segment: any) => {
-      return exclusionLabels.some(label => segment.label.toLowerCase().includes(label));
+      return exclusionLabels.some(label => 
+        segment.label.toLowerCase().includes(label.toLowerCase())
+      );
     });
 
     // Calculate scale factors if image was resized
@@ -132,14 +148,14 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       const y = Math.floor(Math.floor((i / 4) / canvas.width) / scaleY);
       const pixelIndex = y * processCanvas.width + x;
       
-      // Check if this pixel belongs to any clothing segment
+      // Check if this pixel belongs to any clothing segment with a lower threshold
       const isClothing = clothingSegments.some((segment: any) => {
-        return segment.mask.data[pixelIndex] > 0.5;
+        return segment.mask.data[pixelIndex] > 0.2; // Lower threshold to catch more clothing
       });
 
       // Check if this pixel belongs to any exclusion segment
       const isExcluded = exclusionSegments.some((segment: any) => {
-        return segment.mask.data[pixelIndex] > 0.3; // Lower threshold for exclusion areas
+        return segment.mask.data[pixelIndex] > 0.4; // Higher threshold for exclusions
       });
 
       // Set pixel values (white for clothing, black for background or excluded areas)
