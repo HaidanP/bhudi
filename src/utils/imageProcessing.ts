@@ -46,12 +46,13 @@ export const createBinaryMask = (canvas: fabric.Canvas): string => {
   tempCanvas.height = canvas.height!;
   const ctx = tempCanvas.getContext('2d')!;
 
-  // Set white background (areas to preserve)
-  ctx.fillStyle = 'white';
+  // Set black background (areas to preserve)
+  ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-  // Set black for the mask (areas to inpaint)
-  ctx.fillStyle = 'black';
+  // Set white for the mask (areas to inpaint)
+  ctx.fillStyle = 'white';
+  ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1.0; // Ensure full opacity for mask
   
   const objects = canvas.getObjects();
@@ -59,6 +60,12 @@ export const createBinaryMask = (canvas: fabric.Canvas): string => {
     if (obj instanceof fabric.Path) {
       const path = obj as fabric.Path;
       ctx.beginPath();
+      
+      // Increase stroke width for more pronounced masking
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
       const pathCommands = path.path;
       pathCommands?.forEach((command, i) => {
         const commandType = command[0];
@@ -70,9 +77,15 @@ export const createBinaryMask = (canvas: fabric.Canvas): string => {
           ctx.lineTo(command[1], command[2]);
         }
       });
+      
+      // Fill and stroke the path for better coverage
       ctx.fill();
+      ctx.stroke();
     }
   });
 
-  return tempCanvas.toDataURL();
+  // Debug logging
+  console.log('Generated mask image');
+  
+  return tempCanvas.toDataURL('image/png');
 };
