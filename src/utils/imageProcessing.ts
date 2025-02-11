@@ -1,52 +1,42 @@
-
 import * as tf from '@tensorflow/tfjs';
 import * as bodySegmentation from '@tensorflow-models/body-segmentation';
 import { supabase } from "@/integrations/supabase/client";
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
-    // Remove data URL prefix if present
-    const base64String = base64Data.includes('base64,') 
-      ? base64Data.split('base64,')[1] 
-      : base64Data;
+    if (base64Data.startsWith('data:')) {
+      const response = await fetch(base64Data);
+      const blob = await response.blob();
+      const filePath = `${crypto.randomUUID()}-${filename}`;
+      
+      console.log('Uploading blob:', { size: blob.size, type: blob.type });
+      
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, blob, {
+          contentType: 'image/png',
+          cacheControl: '3600',
+          upsert: false
+        });
 
-    // Convert base64 to Blob
-    const byteString = atob(base64String);
-    const arrayBuffer = new ArrayBuffer(byteString.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    for (let i = 0; i < byteString.length; i++) {
-      uint8Array[i] = byteString.charCodeAt(i);
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data } = await supabase.storage
+        .from('images')
+        .createSignedUrl(filePath, 3600);
+
+      if (!data?.signedUrl) {
+        throw new Error('Could not get signed URL for uploaded image');
+      }
+
+      console.log('Successfully uploaded image, signed URL:', data.signedUrl);
+      return data.signedUrl;
+    } else {
+      throw new Error('Invalid image data format');
     }
-    
-    const blob = new Blob([uint8Array], { type: 'image/png' });
-    const filePath = `${crypto.randomUUID()}-${filename}`;
-    
-    console.log('Uploading blob:', { size: blob.size, type: blob.type });
-    
-    const { error: uploadError } = await supabase.storage
-      .from('images')
-      .upload(filePath, blob, {
-        contentType: 'image/png',
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw uploadError;
-    }
-
-    const { data } = await supabase.storage
-      .from('images')
-      .createSignedUrl(filePath, 3600);
-
-    if (!data?.signedUrl) {
-      throw new Error('Could not get signed URL for uploaded image');
-    }
-
-    console.log('Successfully uploaded image, signed URL:', data.signedUrl);
-    return data.signedUrl;
   } catch (error) {
     console.error('Error in uploadToSupabase:', error);
     throw error;
