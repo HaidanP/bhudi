@@ -44,9 +44,9 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
   try {
     console.log('Starting segmentation process...');
     
-    // Initialize the segmentation model with a model that's good at detailed segmentation
+    // Initialize the segmentation model with WASM instead of WebGPU
     const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
-      device: 'webgpu'
+      device: 'wasm'
     });
 
     // Get image data from canvas
