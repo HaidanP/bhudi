@@ -43,11 +43,10 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     // Upload original image to Supabase
     const imageUrl = await uploadToSupabase(imageDataUrl, 'original.png');
 
-    // Call the process-image function with the Replicate model
+    // Call the process-image function with the Grounded SAM model
     const { data, error } = await supabase.functions.invoke('process-image', {
       body: {
-        originalImage: imageUrl,
-        prompt: "Generate a binary mask that segments clothing from the image, excluding face and background. The mask should be white (255,255,255) for clothing and black (0,0,0) for everything else.",
+        originalImage: imageUrl
       }
     });
 

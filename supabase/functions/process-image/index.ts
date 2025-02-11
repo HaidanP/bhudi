@@ -30,16 +30,19 @@ serve(async (req) => {
       auth: REPLICATE_API_KEY,
     })
 
-    const { originalImage, prompt } = await req.json()
+    const { originalImage } = await req.json()
 
-    console.log("Processing image with prompt:", prompt)
+    console.log("Processing image with Grounded SAM")
     console.log("Original image URL:", originalImage)
 
     const prediction = await replicate.run(
-      "ahmdyassr/mask-clothing:1c60fd50bf0e5fb2ccbd93403cf163d5586ab8939139167ac82d29ebb047e84f",
+      "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
       {
         input: {
-          image: originalImage
+          image: originalImage,
+          prompt: "topwear, bottomwear, shoes",
+          box_threshold: 0.3,
+          text_threshold: 0.25
         }
       }
     )
