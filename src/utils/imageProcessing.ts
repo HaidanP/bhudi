@@ -3,35 +3,41 @@ import { fabric } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
-  // Convert base64 to blob
-  const base64Response = await fetch(base64Data);
-  const blob = await base64Response.blob();
-  
-  const filePath = `${crypto.randomUUID()}-${filename}`;
-  
-  // Upload the file
-  const { error: uploadError } = await supabase.storage
-    .from('images')
-    .upload(filePath, blob, {
-      contentType: 'image/png',
-      upsert: false
-    });
+  try {
+    // Convert base64 to blob
+    const base64Response = await fetch(base64Data);
+    const blob = await base64Response.blob();
+    
+    const filePath = `${crypto.randomUUID()}-${filename}`;
+    
+    // Upload the file
+    const { error: uploadError } = await supabase.storage
+      .from('images')
+      .upload(filePath, blob, {
+        contentType: 'image/png',
+        upsert: false
+      });
 
-  if (uploadError) {
-    console.error('Upload error:', uploadError);
-    throw uploadError;
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    // Get the public URL
+    const { data } = await supabase.storage
+      .from('images')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (!data?.signedUrl) {
+      throw new Error('Could not get signed URL for uploaded image');
+    }
+
+    console.log('Successfully uploaded image, signed URL:', data.signedUrl);
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error in uploadToSupabase:', error);
+    throw error;
   }
-
-  // Get the public URL
-  const { data } = await supabase.storage
-    .from('images')
-    .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-
-  if (!data?.signedUrl) {
-    throw new Error('Could not get signed URL for uploaded image');
-  }
-
-  return data.signedUrl;
 };
 
 export const createBinaryMask = (canvas: fabric.Canvas): string => {
