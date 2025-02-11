@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Toolbar } from "./Toolbar";
@@ -131,13 +132,14 @@ export const ImageEditor = () => {
         ctx.beginPath();
         const pathCommands = path.path;
         pathCommands?.forEach((command, i) => {
-          const [type, ...points] = command;
+          // Access array elements directly instead of destructuring
+          const commandType = command[0];
           if (i === 0) {
-            ctx.moveTo(points[0], points[1]);
-          } else if (type === 'Q') {
-            ctx.quadraticCurveTo(points[0], points[1], points[2], points[3]);
-          } else if (type === 'L') {
-            ctx.lineTo(points[0], points[1]);
+            ctx.moveTo(command[1], command[2]);
+          } else if (commandType === 'Q') {
+            ctx.quadraticCurveTo(command[1], command[2], command[3], command[4]);
+          } else if (commandType === 'L') {
+            ctx.lineTo(command[1], command[2]);
           }
         });
         ctx.fill();
