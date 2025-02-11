@@ -30,19 +30,35 @@ serve(async (req) => {
       auth: REPLICATE_API_KEY,
     })
 
-    const { originalImage } = await req.json()
+    const { originalImage, maskImage, prompt } = await req.json()
 
-    console.log("Processing image with Grounded SAM")
+    // If it's a status check request
+    if (originalImage.predictionId) {
+      console.log("Checking status for prediction:", originalImage.predictionId)
+      const prediction = await replicate.predictions.get(originalImage.predictionId)
+      console.log("Status check response:", prediction)
+      return new Response(JSON.stringify(prediction), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log("Processing image with prompt:", prompt)
     console.log("Original image URL:", originalImage)
+    console.log("Mask image URL:", maskImage)
 
     const prediction = await replicate.run(
-      "schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c",
+      "black-forest-labs/flux-fill-pro",
       {
         input: {
+          prompt: prompt,
           image: originalImage,
-          prompt: "topwear, bottomwear, shoes",
-          box_threshold: 0.3,
-          text_threshold: 0.25
+          mask: maskImage,
+          seed: 0,
+          steps: 50,
+          prompt_upsampling: true,
+          guidance: 60,
+          safety_tolerance: 2,
+          output_format: "jpg"
         }
       }
     )
