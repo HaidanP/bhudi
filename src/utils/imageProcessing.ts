@@ -1,10 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { pipeline, env } from '@huggingface/transformers';
-
-// Configure transformers.js to use browser
-env.allowLocalModels = false;
-env.useBrowserCache = false;
+import * as bodySegmentation from '@tensorflow-models/body-segmentation';
+import * as tf from '@tensorflow/tfjs';
 
 const MAX_IMAGE_DIMENSION = 512; // Limit image size to avoid memory issues
 
@@ -75,24 +72,37 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
   try {
     console.log('Starting segmentation process...');
     
-    // Resize image if needed to prevent memory issues
-    const processCanvas = resizeImageIfNeeded(canvas);
+    // Ensure TensorFlow backend is initialized
+    await tf.ready();
     
-    // Use a model specialized for semantic segmentation
-    const segmenter = await pipeline('image-segmentation', 'mattmdjaga/segformer_b2_clothes', {
-      device: 'wasm'
+    // Load the body segmentation model
+    const model = await bodySegmentation.createSegmenter(
+      bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation,
+      {
+        runtime: 'tfjs',
+        modelType: 'general'
+      }
+    );
+    
+    console.log('Model loaded successfully');
+
+    // Create an image element from the canvas
+    const img = new Image();
+    img.src = canvas.toDataURL();
+    await new Promise(resolve => img.onload = resolve);
+
+    // Run segmentation
+    console.log('Running segmentation...');
+    const segmentation = await model.segmentPeople(img, {
+      multiSegmentation: false,
+      segmentBodyParts: false
     });
 
-    // Get image data from canvas
-    const imageData = processCanvas.toDataURL('image/jpeg', 0.8);
-    console.log('Image converted to data URL');
+    if (!segmentation.length) {
+      throw new Error('No segmentation found');
+    }
 
-    // Process the image with the segmentation model
-    console.log('Running segmentation...');
-    const segments = await segmenter(imageData);
-    console.log('Segmentation complete:', segments);
-
-    // Create a new canvas for the mask at original size
+    // Create a new canvas for the mask
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = canvas.width;
     maskCanvas.height = canvas.height;
@@ -102,39 +112,29 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
       throw new Error('Could not get canvas context');
     }
 
-    // Create binary mask from segmentation results
-    const imageData2 = ctx.createImageData(canvas.width, canvas.height);
-    const data = imageData2.data;
-
-    // Calculate scale factors if image was resized
-    const scaleX = canvas.width / processCanvas.width;
-    const scaleY = canvas.height / processCanvas.height;
-
-    // Fill the mask based on the largest segment (since this model is more accurate)
-    let largestSegment = segments[0];
-    for (const segment of segments) {
-      if (segment.score > (largestSegment?.score || 0)) {
-        largestSegment = segment;
-      }
+    // Get the segmentation mask
+    const mask = segmentation[0];
+    const maskData = await mask.mask.toImageData();
+    
+    // Create binary mask
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Convert the mask to binary (white for person, black for background)
+    for (let i = 0; i < maskData.data.length; i += 4) {
+      // The alpha channel contains the mask value
+      const maskValue = maskData.data[i + 3] / 255;
+      
+      // Set RGB values to white or black based on mask
+      const value = maskValue > 0.1 ? 255 : 0;
+      data[i] = value;     // R
+      data[i + 1] = value; // G
+      data[i + 2] = value; // B
+      data[i + 3] = 255;   // A (always fully opaque)
     }
 
-    if (largestSegment) {
-      // Fill the mask with white for the detected object
-      for (let i = 0; i < data.length; i += 4) {
-        const x = Math.floor(((i / 4) % canvas.width) / scaleX);
-        const y = Math.floor(Math.floor((i / 4) / canvas.width) / scaleY);
-        const pixelIndex = y * processCanvas.width + x;
-        
-        const isObject = largestSegment.mask.data[pixelIndex] > 0.3;
-        
-        data[i] = isObject ? 255 : 0;     // R
-        data[i + 1] = isObject ? 255 : 0; // G
-        data[i + 2] = isObject ? 255 : 0; // B
-        data[i + 3] = 255;                // A
-      }
-    }
-
-    ctx.putImageData(imageData2, 0, 0);
+    // Put the binary mask on the canvas
+    ctx.putImageData(imageData, 0, 0);
     console.log('Mask created successfully');
 
     // Convert to base64
