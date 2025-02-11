@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { fabric } from "fabric";
 import { Toolbar } from "./Toolbar";
@@ -96,47 +95,23 @@ export const ImageEditor = () => {
     setIsProcessing(true);
     
     try {
-      const maskDataUrl = createBinaryMask(fabricCanvas);
+      // Generate mask using the segmentation model
+      const maskDataUrl = await createBinaryMask(fabricCanvas);
       
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = originalDimensions.width;
-      tempCanvas.height = originalDimensions.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      
-      if (!tempCtx) {
-        throw new Error("Could not create temporary canvas context");
-      }
-
-      const maskImg = new Image();
-      await new Promise((resolve, reject) => {
-        maskImg.onload = resolve;
-        maskImg.onerror = reject;
-        maskImg.src = maskDataUrl;
-      });
-
-      tempCtx.fillStyle = 'black';
-      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      tempCtx.drawImage(
-        maskImg,
-        0, 0,
-        originalDimensions.width,
-        originalDimensions.height
-      );
-
       const originalImageUrl = await uploadToSupabase(
         originalImage,
         'original.png'
       );
 
-      const scaledMaskUrl = await uploadToSupabase(
-        tempCanvas.toDataURL(),
+      const maskImageUrl = await uploadToSupabase(
+        maskDataUrl,
         'mask.png'
       );
 
       const { data, error } = await supabase.functions.invoke('process-image', {
         body: {
           originalImage: originalImageUrl,
-          maskImage: scaledMaskUrl,
+          maskImage: maskImageUrl,
           prompt
         },
       });

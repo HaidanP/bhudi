@@ -1,6 +1,8 @@
 
 import { fabric } from "fabric";
 import { supabase } from "@/integrations/supabase/client";
+import * as tf from '@tensorflow/tfjs';
+import * as bodySegmentation from '@tensorflow-models/body-segmentation';
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
   try {
@@ -40,52 +42,108 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
   }
 };
 
-export const createBinaryMask = (canvas: fabric.Canvas): string => {
+export const loadSegmentationModel = async () => {
+  await tf.ready();
+  const model = await bodySegmentation.createSegmenter(
+    bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation,
+    {
+      runtime: 'tfjs',
+      modelType: 'general',
+    }
+  );
+  return model;
+};
+
+export const createBinaryMask = async (canvas: fabric.Canvas): Promise<string> => {
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width!;
   tempCanvas.height = canvas.height!;
   const ctx = tempCanvas.getContext('2d')!;
 
-  // Set black background (areas to preserve)
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  // Draw the background image to the temp canvas
+  const backgroundImage = canvas.backgroundImage as fabric.Image;
+  if (!backgroundImage) {
+    throw new Error('No background image found');
+  }
 
-  // Set white for the mask (areas to inpaint)
-  ctx.fillStyle = 'white';
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1.0; // Ensure full opacity for mask
-  
-  const objects = canvas.getObjects();
-  objects.forEach(obj => {
-    if (obj instanceof fabric.Path) {
-      const path = obj as fabric.Path;
-      ctx.beginPath();
-      
-      // Increase stroke width for more pronounced masking
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      const pathCommands = path.path;
-      pathCommands?.forEach((command, i) => {
-        const commandType = command[0];
-        if (i === 0) {
-          ctx.moveTo(command[1], command[2]);
-        } else if (commandType === 'Q') {
-          ctx.quadraticCurveTo(command[1], command[2], command[3], command[4]);
-        } else if (commandType === 'L') {
-          ctx.lineTo(command[1], command[2]);
-        }
-      });
-      
-      // Fill and stroke the path for better coverage
-      ctx.fill();
-      ctx.stroke();
+  ctx.drawImage(
+    backgroundImage.getElement() as HTMLImageElement,
+    0,
+    0,
+    tempCanvas.width,
+    tempCanvas.height
+  );
+
+  try {
+    // Load and run segmentation model
+    const model = await loadSegmentationModel();
+    const segmentation = await model.segmentPeople(tempCanvas, {
+      multiSegmentation: false,
+      segmentBodyParts: true,
+    });
+
+    // Create final mask canvas
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = tempCanvas.width;
+    maskCanvas.height = tempCanvas.height;
+    const maskCtx = maskCanvas.getContext('2d')!;
+
+    // Set black background (preserved areas)
+    maskCtx.fillStyle = 'black';
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+    // Get segmentation data
+    const foregroundMask = await segmentation[0].mask.toImageData();
+    const imageData = new ImageData(
+      foregroundMask.data,
+      foregroundMask.width,
+      foregroundMask.height
+    );
+
+    // Apply user's drawing as a mask
+    const userMaskCanvas = document.createElement('canvas');
+    userMaskCanvas.width = tempCanvas.width;
+    userMaskCanvas.height = tempCanvas.height;
+    const userMaskCtx = userMaskCanvas.getContext('2d')!;
+
+    // Draw user's paths in white
+    userMaskCtx.fillStyle = 'white';
+    const objects = canvas.getObjects();
+    objects.forEach(obj => {
+      if (obj instanceof fabric.Path) {
+        const path = obj as fabric.Path;
+        userMaskCtx.beginPath();
+        const pathCommands = path.path;
+        pathCommands?.forEach((command, i) => {
+          const commandType = command[0];
+          if (i === 0) {
+            userMaskCtx.moveTo(command[1], command[2]);
+          } else if (commandType === 'Q') {
+            userMaskCtx.quadraticCurveTo(command[1], command[2], command[3], command[4]);
+          } else if (commandType === 'L') {
+            userMaskCtx.lineTo(command[1], command[2]);
+          }
+        });
+        userMaskCtx.fill();
+      }
+    });
+
+    // Combine segmentation mask with user's mask
+    const userMaskData = userMaskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      // Only set white pixels where both the segmentation detected a person AND user drew
+      if (imageData.data[i + 3] > 0 && userMaskData.data[i] > 0) {
+        maskCtx.fillStyle = 'white';
+        const x = (i / 4) % maskCanvas.width;
+        const y = Math.floor((i / 4) / maskCanvas.width);
+        maskCtx.fillRect(x, y, 1, 1);
+      }
     }
-  });
 
-  // Debug logging
-  console.log('Generated mask image');
-  
-  return tempCanvas.toDataURL('image/png');
+    console.log('Generated segmented mask image');
+    return maskCanvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Error in segmentation:', error);
+    throw error;
+  }
 };
