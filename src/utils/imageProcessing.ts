@@ -1,6 +1,6 @@
 
 import * as tf from '@tensorflow/tfjs';
-import * as bodySegmentation from '@tensorflow-models/body-segmentation';
+import * as bodyPix from '@tensorflow-models/body-pix';
 import { supabase } from "@/integrations/supabase/client";
 
 export const uploadToSupabase = async (base64Data: string, filename: string): Promise<string> => {
@@ -39,22 +39,29 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
 
 export const loadSegmentationModel = async () => {
   await tf.ready();
-  const model = await bodySegmentation.createSegmenter(
-    bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation,
-    {
-      runtime: 'tfjs',
-      modelType: 'general',
-    }
-  );
+  const model = await bodyPix.load({
+    architecture: 'ResNet50',
+    outputStride: 16,
+    quantBytes: 4
+  });
   return model;
 };
+
+// Define the parts we want to include in the mask
+const CLOTHING_PARTS = [
+  'left_sleeve', 'right_sleeve',
+  'torso_front', 'torso_back',
+  'left_shoe', 'right_shoe',
+  'left_boot', 'right_boot'
+];
 
 export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<string> => {
   try {
     const model = await loadSegmentationModel();
-    const segmentation = await model.segmentPeople(canvas, {
-      multiSegmentation: false,
-      segmentBodyParts: true,
+    const segmentation = await model.segmentPersonParts(canvas, {
+      flipHorizontal: false,
+      internalResolution: 'full',
+      segmentationThreshold: 0.7,
     });
 
     const maskCanvas = document.createElement('canvas');
@@ -66,25 +73,34 @@ export const createBinaryMask = async (canvas: HTMLCanvasElement): Promise<strin
     maskCtx.fillStyle = 'black';
     maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-    // Get segmentation data
-    const foregroundMask = await segmentation[0].mask.toImageData();
-    const imageData = new ImageData(
-      foregroundMask.data,
-      foregroundMask.width,
-      foregroundMask.height
-    );
+    // Get colored parts data
+    const coloredPartImage = bodyPix.toColoredPartMask(segmentation);
+    const bytes = new Uint8ClampedArray(canvas.width * canvas.height * 4);
 
-    // Set white for the detected person areas (areas to inpaint)
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      if (imageData.data[i + 3] > 0) {
-        maskCtx.fillStyle = 'white';
-        const x = (i / 4) % maskCanvas.width;
-        const y = Math.floor((i / 4) / maskCanvas.width);
-        maskCtx.fillRect(x, y, 1, 1);
+    for (let i = 0; i < segmentation.data.length; i++) {
+      const partId = segmentation.data[i];
+      const partName = segmentation.allPoses[0]?.bodyParts[partId]?.part;
+      
+      // Check if this part should be included in the mask
+      if (partName && CLOTHING_PARTS.includes(partName)) {
+        const j = i * 4;
+        bytes[j] = 255;     // R
+        bytes[j + 1] = 255; // G
+        bytes[j + 2] = 255; // B
+        bytes[j + 3] = 255; // A
+      } else {
+        const j = i * 4;
+        bytes[j] = 0;     // R
+        bytes[j + 1] = 0; // G
+        bytes[j + 2] = 0; // B
+        bytes[j + 3] = 255; // A
       }
     }
 
-    console.log('Generated segmentation mask');
+    const imageData = new ImageData(bytes, canvas.width, canvas.height);
+    maskCtx.putImageData(imageData, 0, 0);
+
+    console.log('Generated clothing-specific segmentation mask');
     return maskCanvas.toDataURL('image/png');
   } catch (error) {
     console.error('Error in segmentation:', error);
