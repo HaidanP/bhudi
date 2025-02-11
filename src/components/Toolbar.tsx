@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Upload } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ToolbarProps {
   onImageUpload: (file: File) => void;
@@ -17,6 +18,8 @@ export const Toolbar = ({
   onBrushSizeChange,
   onClear,
 }: ToolbarProps) => {
+  const isMobile = useIsMobile();
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -25,12 +28,11 @@ export const Toolbar = ({
   };
 
   const handleUploadClick = () => {
-    // Programmatically click the hidden file input
     document.getElementById('image-upload')?.click();
   };
 
   return (
-    <div className="flex items-center gap-6 p-4 bg-white rounded-lg shadow-sm">
+    <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 p-4 bg-white rounded-lg shadow-sm`}>
       <div>
         <input
           type="file"
@@ -39,13 +41,13 @@ export const Toolbar = ({
           className="hidden"
           id="image-upload"
         />
-        <Button variant="outline" className="gap-2" onClick={handleUploadClick}>
+        <Button variant="outline" className="gap-2 w-full md:w-auto" onClick={handleUploadClick}>
           <Upload size={16} />
           Upload Image
         </Button>
       </div>
 
-      <div className="flex items-center gap-4 flex-1">
+      <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1`}>
         <Label htmlFor="brush-size" className="min-w-24">
           Brush Size: {brushSize}px
         </Label>
@@ -60,7 +62,7 @@ export const Toolbar = ({
         />
       </div>
 
-      <Button variant="outline" onClick={onClear}>
+      <Button variant="outline" onClick={onClear} className="w-full md:w-auto">
         Clear Mask
       </Button>
     </div>

@@ -8,6 +8,7 @@ import { Header } from "./Header";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createBinaryMask, uploadToSupabase } from "@/utils/imageProcessing";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const ImageEditor = () => {
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
@@ -17,6 +18,7 @@ export const ImageEditor = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
+  const isMobile = useIsMobile();
 
   const handleImageUpload = async (file: File) => {
     if (!fabricCanvas) return;
@@ -27,8 +29,9 @@ export const ImageEditor = () => {
       img.onload = () => {
         setOriginalDimensions({ width: img.width, height: img.height });
 
-        const containerWidth = 800;
-        const containerHeight = 600;
+        // Adjust container size based on screen size
+        const containerWidth = isMobile ? window.innerWidth - 32 : 800;
+        const containerHeight = isMobile ? 400 : 600;
         const imgAspectRatio = img.width / img.height;
         const containerAspectRatio = containerWidth / containerHeight;
         
@@ -42,10 +45,8 @@ export const ImageEditor = () => {
           newWidth = containerHeight * imgAspectRatio;
         }
 
-        // Update dimensions first
         setCanvasDimensions({ width: newWidth, height: newHeight });
 
-        // Set background image after dimensions are updated
         const imgUrl = e.target?.result as string;
         fabricCanvas.setBackgroundImage(imgUrl, fabricCanvas.renderAll.bind(fabricCanvas), {
           scaleX: newWidth / img.width,
@@ -155,11 +156,11 @@ export const ImageEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
         <Header />
 
-        <div className="glass-panel rounded-xl p-8 space-y-6">
+        <div className="glass-panel rounded-xl p-4 md:p-8 space-y-4 md:space-y-6">
           <Toolbar
             onImageUpload={handleImageUpload}
             brushSize={brushSize}
@@ -167,8 +168,8 @@ export const ImageEditor = () => {
             onClear={clearMask}
           />
 
-          <div className="flex gap-8">
-            <div className="flex-1">
+          <div className={`flex ${isMobile ? 'flex-col' : ''} gap-4 md:gap-8`}>
+            <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
               <h3 className="text-sm font-medium mb-2">Original & Mask</h3>
               <Canvas 
                 onCanvasReady={handleCanvasReady}
@@ -178,7 +179,7 @@ export const ImageEditor = () => {
             </div>
 
             {generatedImage && (
-              <div className="flex-1">
+              <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
                 <h3 className="text-sm font-medium mb-2">Generated Result</h3>
                 <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center">
                   <img 
