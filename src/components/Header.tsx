@@ -17,7 +17,7 @@ export const Header = () => {
         <p className="text-[22px] font-medium text-white/90 leading-relaxed animate-fade-in [animation-delay:200ms]">
           Transform your fashion with AI-powered magic
         </p>
-        <p className="text-[20px] font-normal text-white/70 leading-relaxed animate-fade-in [animation-delay:400ms]">
+        <p className="text-[18px] font-normal text-white/70 leading-relaxed animate-fade-in [animation-delay:400ms]">
           Edit, reimagine, and bring your clothing ideas to life
         </p>
       </div>
