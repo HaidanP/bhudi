@@ -25,7 +25,13 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        setOriginalDimensions({ width: img.width, height: img.height });
+        // Calculate dimensions that maintain aspect ratio and fit within reasonable bounds
+        const maxDimension = 512;
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+        const scaledWidth = Math.round(img.width * scale);
+        const scaledHeight = Math.round(img.height * scale);
+        
+        setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
         setOriginalImage(e.target?.result as string);
         setGeneratedImage(null);
         setGeneratedMask(null);
@@ -50,6 +56,8 @@ export const ImageEditor = () => {
         canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
           scaleX: canvas.width! / img.width!,
           scaleY: canvas.height! / img.height!,
+          originX: 'left',
+          originY: 'top'
         });
       });
     }
