@@ -14,7 +14,7 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || !width || !height) return;
+    if (!canvasRef.current) return;
 
     // Calculate scaled dimensions to fit within viewport
     const maxWidth = Math.min(width, window.innerWidth - 32);
@@ -22,13 +22,11 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
     const scaledWidth = width * scale;
     const scaledHeight = height * scale;
 
-    // Initialize Fabric canvas with correct dimensions
     const canvas = new fabric.Canvas(canvasRef.current, {
       isDrawingMode: true,
       width: scaledWidth,
       height: scaledHeight,
-      backgroundColor: 'transparent',
-      enableRetinaScaling: false,
+      enableRetinaScaling: true,
       fireRightClick: true,
       stopContextMenu: true,
       allowTouchScrolling: false
@@ -37,7 +35,7 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
     // Configure the brush
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     canvas.freeDrawingBrush.width = brushSize;
-    canvas.freeDrawingBrush.color = "white";
+    canvas.freeDrawingBrush.color = "white"; // Use white for erasing on black mask
 
     fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);
@@ -64,7 +62,7 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
       canvas.dispose();
       fabricCanvasRef.current = null;
     };
-  }, [width, height]); // Added width and height to dependencies
+  }, []);
 
   // Update brush size when it changes
   useEffect(() => {
@@ -73,8 +71,24 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
     }
   }, [brushSize]);
 
+  // Handle dimension changes separately
+  useEffect(() => {
+    if (fabricCanvasRef.current) {
+      const maxWidth = Math.min(width, window.innerWidth - 32);
+      const scale = maxWidth / width;
+      const scaledWidth = width * scale;
+      const scaledHeight = height * scale;
+
+      fabricCanvasRef.current.setDimensions({
+        width: scaledWidth,
+        height: scaledHeight
+      });
+      fabricCanvasRef.current.renderAll();
+    }
+  }, [width, height]);
+
   return (
-    <div className="canvas-container bg-transparent rounded-lg overflow-hidden flex items-center justify-center w-full">
+    <div className="canvas-container bg-white rounded-lg overflow-hidden flex items-center justify-center w-full">
       <canvas ref={canvasRef} className="max-w-full h-auto" />
     </div>
   );
