@@ -6,7 +6,7 @@ interface CanvasProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
   width: number;
   height: number;
-  brushSize: number;  // Add this prop
+  brushSize: number;
 }
 
 export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps) => {
@@ -17,7 +17,7 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
     if (!canvasRef.current) return;
 
     // Calculate scaled dimensions to fit within viewport
-    const maxWidth = Math.min(width, window.innerWidth - 32); // 32px for padding
+    const maxWidth = Math.min(width, window.innerWidth - 32);
     const scale = maxWidth / width;
     const scaledWidth = width * scale;
     const scaledHeight = height * scale;
@@ -32,10 +32,10 @@ export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps)
       allowTouchScrolling: false
     });
 
-    // Configure the brush for better cross-device compatibility
+    // Configure the brush
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.width = brushSize;  // Use the brushSize prop
-    canvas.freeDrawingBrush.color = "black";
+    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = "white"; // Use white for erasing on black mask
 
     fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);

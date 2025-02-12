@@ -1,4 +1,3 @@
-
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -97,30 +96,19 @@ export const ImageEditor = () => {
 
           <div className={`flex ${isMobile ? 'flex-col' : ''} gap-6 md:gap-8`}>
             {originalImage && originalDimensions && (
-              <div className="w-full flex-1">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-base font-medium text-gray-300">Draw on the areas to edit</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRetry}
-                    className="border-rose-800/50 hover:bg-rose-800/10 hover:text-rose-600 text-rose-700"
-                  >
-                    <RefreshCw size={16} className="mr-2" />
-                    Reset
-                  </Button>
-                </div>
-                <ImagePreview
-                  onCanvasReady={handleCanvasReady}
-                  width={originalDimensions.width}
-                  height={originalDimensions.height}
-                  brushSize={brushSize}
-                />
-              </div>
+              <ImagePreview
+                onCanvasReady={handleCanvasReady}
+                width={originalDimensions.width}
+                height={originalDimensions.height}
+                brushSize={brushSize}
+              />
             )}
 
             {generatedImage && (
-              <GeneratedResult imageUrl={generatedImage} />
+              <GeneratedResult 
+                imageUrl={generatedImage} 
+                onReset={handleRetry}
+              />
             )}
           </div>
 
