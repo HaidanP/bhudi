@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +30,6 @@ export function useImageProcessing() {
     try {
       let processedFile = file;
       
-      // Only convert if the file is HEIC/HEIF
       if (file.type === "image/heic" || file.type === "image/heif") {
         toast.info("Converting HEIC image...");
         const convertedBlob = await heic2any({
@@ -43,61 +43,52 @@ export function useImageProcessing() {
         toast.success("HEIC conversion complete!");
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          setActualImageDimensions({ width: img.width, height: img.height });
-          
-          const maxDimension = 512;
-          const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
-          const scaledWidth = Math.round(img.width * scale);
-          const scaledHeight = Math.round(img.height * scale);
-          
-          setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
-          setOriginalImage(e.target?.result as string);
-          setGeneratedImage(null);
-          if (file.type !== "image/heic" && file.type !== "image/heif") {
-            toast.success("Image uploaded successfully!");
-          }
-        };
-        img.src = e.target?.result as string;
+      const img = new Image();
+      
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        setActualImageDimensions({ width: img.width, height: img.height });
+        
+        const maxDimension = window.innerWidth < 768 ? 400 : 512;
+        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+        const scaledWidth = Math.round(img.width * scale);
+        const scaledHeight = Math.round(img.height * scale);
+        
+        setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
+        setOriginalImage(img.src);
+        setGeneratedImage(null);
       };
-      reader.readAsDataURL(processedFile);
+
+      img.src = URL.createObjectURL(processedFile);
+      
+      if (file.type !== "image/heic" && file.type !== "image/heif") {
+        toast.success("Image uploaded successfully!");
+      }
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error("Failed to process image. Please try a different format.");
     }
   };
 
-  const handleCanvasReady = (canvas: fabric.Canvas) => {
-    setFabricCanvas(canvas);
-    if (originalImage) {
-      fabric.Image.fromURL(originalImage, (img) => {
-        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-          scaleX: canvas.width! / img.width!,
-          scaleY: canvas.height! / img.height!,
-          originX: 'left',
-          originY: 'top'
-        });
-      });
-    }
-  };
-
   const getMaskFromCanvas = () => {
     if (!fabricCanvas || !actualImageDimensions) return null;
     
+    // Create a regular canvas for better compatibility
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = actualImageDimensions.width;
     tempCanvas.height = actualImageDimensions.height;
-    const ctx = tempCanvas.getContext('2d')!;
     
+    const ctx = tempCanvas.getContext('2d');
+    if (!ctx) return null;
+    
+    // Set drawing properties
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
     const scaleX = actualImageDimensions.width / fabricCanvas.width!;
     const scaleY = actualImageDimensions.height / fabricCanvas.height!;
     
+    // Draw thick white lines for the mask
     ctx.strokeStyle = 'white';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -119,6 +110,7 @@ export function useImageProcessing() {
       }
     });
     
+    // Draw thinner white lines for better edge definition
     fabricCanvas.getObjects().forEach(obj => {
       if (obj.type === 'path') {
         const path = obj as fabric.Path;
@@ -139,6 +131,24 @@ export function useImageProcessing() {
     return tempCanvas.toDataURL();
   };
 
+  const handleCanvasReady = (canvas: fabric.Canvas) => {
+    canvas.enableRetinaScaling = false;
+    canvas.selection = false;
+    canvas.renderOnAddRemove = false;
+    
+    setFabricCanvas(canvas);
+    if (originalImage) {
+      fabric.Image.fromURL(originalImage, (img) => {
+        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+          scaleX: canvas.width! / img.width!,
+          scaleY: canvas.height! / img.height!,
+          originX: 'left',
+          originY: 'top'
+        });
+      }, { crossOrigin: 'anonymous' });
+    }
+  };
+
   const processImage = async (prompt: string) => {
     if (!originalImage || !originalDimensions) {
       toast.error("Please upload an image first!");
@@ -154,15 +164,10 @@ export function useImageProcessing() {
         return;
       }
       
-      const originalImageUrl = await uploadToSupabase(
-        originalImage,
-        'original.png'
-      );
-
-      const maskImageUrl = await uploadToSupabase(
-        maskDataUrl,
-        'mask.png'
-      );
+      const [originalImageUrl, maskImageUrl] = await Promise.all([
+        uploadToSupabase(originalImage, 'original.png'),
+        uploadToSupabase(maskDataUrl, 'mask.png')
+      ]);
 
       const { data, error } = await supabase.functions.invoke('process-image', {
         body: {
