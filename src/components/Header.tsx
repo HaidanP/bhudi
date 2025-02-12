@@ -14,7 +14,7 @@ export const Header = () => {
       </div>
       
       <div className="space-y-6 container-width">
-        <p className="text-[28px] font-medium text-white/90 leading-relaxed animate-fade-in [animation-delay:200ms]">
+        <p className="text-[22px] font-medium text-white/90 leading-relaxed animate-fade-in [animation-delay:200ms]">
           Transform your fashion with AI-powered magic
         </p>
         <p className="text-[20px] font-normal text-white/70 leading-relaxed animate-fade-in [animation-delay:400ms]">
