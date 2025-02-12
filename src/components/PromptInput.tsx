@@ -22,18 +22,18 @@ export const PromptInput = ({ onSubmit, disabled }: PromptInputProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'flex-col' : ''} gap-3 bg-black/60 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/10`}>
+    <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'flex-col' : ''} gap-4 bg-black/60 backdrop-blur-2xl p-5 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.25)] border border-white/10 transition-all duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.05)]`}>
       <Input
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Describe the changes you want to make..."
-        className="flex-1 h-12 text-base placeholder:text-gray-500 bg-black/20 border-white/10 focus-visible:ring-rose-800 text-gray-200"
+        className="flex-1 h-12 text-base placeholder:text-gray-500 bg-black/40 border-white/10 focus-visible:ring-rose-500/50 text-gray-200 rounded-xl transition-all duration-300"
         disabled={disabled}
       />
       <Button 
         type="submit" 
         disabled={disabled || !prompt.trim()} 
-        className={`h-12 px-6 bg-gradient-to-r from-rose-900 to-rose-800 hover:from-rose-950 hover:to-rose-900 text-base font-medium disabled:opacity-50 ${isMobile ? 'w-full' : 'min-w-[140px]'}`}
+        className={`h-12 px-6 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-base font-medium disabled:opacity-50 rounded-xl transition-all duration-300 ${isMobile ? 'w-full' : 'min-w-[140px]'} transform hover:scale-[1.02] active:scale-[0.98]`}
       >
         <Wand2 size={18} className="mr-2" />
         Generate
