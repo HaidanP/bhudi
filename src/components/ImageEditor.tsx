@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { Header } from "./Header";
+import { Footer } from "./Footer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadToSupabase } from "@/utils/imageProcessing";
@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { Upload } from "lucide-react";
 import { PromptInput } from "./PromptInput";
 import { Canvas } from "./Canvas";
+import { DrawingToolbar } from "./DrawingToolbar";
 import { fabric } from "fabric";
 
 export const ImageEditor = () => {
@@ -18,6 +19,8 @@ export const ImageEditor = () => {
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [actualImageDimensions, setActualImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [activeTool, setActiveTool] = useState<"brush" | "eraser">("brush");
+  const [brushSize, setBrushSize] = useState(20);
   const isMobile = useIsMobile();
 
   const handleImageUpload = async (file: File) => {
@@ -60,6 +63,23 @@ export const ImageEditor = () => {
           originY: 'top'
         });
       });
+    }
+
+    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = activeTool === "eraser" ? "black" : "white";
+  };
+
+  const handleToolChange = (tool: "brush" | "eraser") => {
+    setActiveTool(tool);
+    if (fabricCanvas) {
+      fabricCanvas.freeDrawingBrush.color = tool === "eraser" ? "black" : "white";
+    }
+  };
+
+  const handleBrushSizeChange = (size: number) => {
+    setBrushSize(size);
+    if (fabricCanvas) {
+      fabricCanvas.freeDrawingBrush.width = size;
     }
   };
 
@@ -166,12 +186,12 @@ export const ImageEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
         <Header />
 
-        <div className="glass-panel rounded-xl p-4 md:p-8 space-y-4 md:space-y-6">
-          <div>
+        <div className="glass-panel bg-white/30 backdrop-blur-sm rounded-xl p-4 md:p-8 space-y-4 md:space-y-6 shadow-lg border border-white/20">
+          <div className="flex flex-col md:flex-row gap-4 items-start">
             <input
               type="file"
               accept="image/*"
@@ -181,30 +201,41 @@ export const ImageEditor = () => {
             />
             <Button 
               variant="outline" 
-              className="gap-2 w-full md:w-auto" 
+              className="gap-2 w-full md:w-auto bg-white/50 hover:bg-white/70" 
               onClick={() => document.getElementById('image-upload')?.click()}
             >
               <Upload size={16} />
               Upload Image
             </Button>
+            
+            {originalImage && (
+              <DrawingToolbar
+                activeTool={activeTool}
+                brushSize={brushSize}
+                onToolChange={handleToolChange}
+                onBrushSizeChange={handleBrushSizeChange}
+              />
+            )}
           </div>
 
           <div className={`flex ${isMobile ? 'flex-col' : ''} gap-4 md:gap-8`}>
             {originalImage && (
               <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-                <h3 className="text-sm font-medium mb-2">Draw Mask</h3>
-                <Canvas 
-                  onCanvasReady={handleCanvasReady}
-                  width={originalDimensions?.width || 512}
-                  height={originalDimensions?.height || 512}
-                />
+                <h3 className="text-sm font-medium mb-2">Draw on the areas to edit</h3>
+                <div className="bg-white rounded-lg overflow-hidden shadow-md">
+                  <Canvas 
+                    onCanvasReady={handleCanvasReady}
+                    width={originalDimensions?.width || 512}
+                    height={originalDimensions?.height || 512}
+                  />
+                </div>
               </div>
             )}
 
             {generatedImage && (
               <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
                 <h3 className="text-sm font-medium mb-2">Generated Result</h3>
-                <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md flex items-center justify-center">
                   <img 
                     src={generatedImage} 
                     alt="Generated" 
@@ -218,7 +249,7 @@ export const ImageEditor = () => {
           <PromptInput onSubmit={handleSubmit} disabled={isProcessing} />
 
           {isProcessing && (
-            <div className="loading-overlay">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="text-white text-center space-y-4">
                 <div className="animate-spin w-10 h-10 border-4 border-white/20 border-t-white rounded-full" />
                 <p>Processing your image...</p>
@@ -226,6 +257,8 @@ export const ImageEditor = () => {
             </div>
           )}
         </div>
+
+        <Footer />
       </div>
     </div>
   );
