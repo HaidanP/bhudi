@@ -10,10 +10,15 @@ import { LoadingOverlay } from "./LoadingOverlay";
 import { useImageProcessing } from "@/hooks/use-image-processing";
 import { useState } from "react";
 import type { ChangeEvent } from "react";
+import { SparklesCore } from "./ui/sparkles";
+import { Alert } from "./ui/alert";
+import { CircleCheck, AlertCircle } from "lucide-react";
 
 export const ImageEditor = () => {
   const [activeTool, setActiveTool] = useState<"brush" | "eraser">("brush");
   const [brushSize, setBrushSize] = useState(20);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   
   const {
     originalImage,
@@ -33,9 +38,32 @@ export const ImageEditor = () => {
     }
   };
 
+  const handleProcessImage = async (prompt: string) => {
+    try {
+      await processImage(prompt);
+      setSuccess(true);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setSuccess(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_center,#141414,#0a0a0a)] p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0a]">
+      <div className="absolute inset-0 w-full h-full">
+        <SparklesCore
+          id="tsparticles"
+          background="transparent"
+          minSize={0.6}
+          maxSize={1.4}
+          particleDensity={100}
+          className="w-full h-full"
+          particleColor="#FFFFFF"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto p-4 space-y-6">
         <Header />
 
         <div className="mt-14 space-y-6">
@@ -57,16 +85,42 @@ export const ImageEditor = () => {
                 brushSize={brushSize}
               />
               
+              {error && (
+                <Alert
+                  variant="error"
+                  layout="row"
+                  icon={<AlertCircle className="text-red-500" size={16} strokeWidth={2} />}
+                  className="bg-red-500/10 text-red-500"
+                >
+                  <p className="text-sm">{error}</p>
+                </Alert>
+              )}
+
+              {success && generatedImage && (
+                <Alert
+                  variant="success"
+                  layout="row"
+                  icon={<CircleCheck className="text-emerald-500" size={16} strokeWidth={2} />}
+                  className="bg-emerald-500/10 text-emerald-500"
+                >
+                  <p className="text-sm">Image generated successfully!</p>
+                </Alert>
+              )}
+              
               {generatedImage && (
                 <GeneratedResult 
                   imageUrl={generatedImage} 
-                  onReset={resetState}
+                  onReset={() => {
+                    resetState();
+                    setSuccess(false);
+                    setError(null);
+                  }}
                 />
               )}
             </div>
           )}
 
-          <PromptInput onSubmit={processImage} disabled={isProcessing} />
+          <PromptInput onSubmit={handleProcessImage} disabled={isProcessing} />
         </div>
 
         <Footer />
