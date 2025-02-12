@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,80 +43,34 @@ export function useImageProcessing() {
         toast.success("HEIC conversion complete!");
       }
 
-      // Create an off-screen image element for dimensions
-      const img = new Image();
-      
-      img.onload = () => {
-        URL.revokeObjectURL(img.src); // Clean up the object URL
-        setActualImageDimensions({ width: img.width, height: img.height });
-        
-        // Calculate scaled dimensions
-        const maxDimension = window.innerWidth < 768 ? 400 : 512; // Smaller dimension for mobile
-        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
-        const scaledWidth = Math.round(img.width * scale);
-        const scaledHeight = Math.round(img.height * scale);
-        
-        setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
-        setOriginalImage(img.src);
-        setGeneratedImage(null);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          setActualImageDimensions({ width: img.width, height: img.height });
+          
+          const maxDimension = 512;
+          const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+          const scaledWidth = Math.round(img.width * scale);
+          const scaledHeight = Math.round(img.height * scale);
+          
+          setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
+          setOriginalImage(e.target?.result as string);
+          setGeneratedImage(null);
+          if (file.type !== "image/heic" && file.type !== "image/heif") {
+            toast.success("Image uploaded successfully!");
+          }
+        };
+        img.src = e.target?.result as string;
       };
-
-      // Use createObjectURL instead of FileReader for better performance
-      img.src = URL.createObjectURL(processedFile);
-      
-      if (file.type !== "image/heic" && file.type !== "image/heif") {
-        toast.success("Image uploaded successfully!");
-      }
+      reader.readAsDataURL(processedFile);
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error("Failed to process image. Please try a different format.");
     }
   };
 
-  const getMaskFromCanvas = () => {
-    if (!fabricCanvas || !actualImageDimensions) return null;
-    
-    // Use OffscreenCanvas if available for better performance
-    const TempCanvas = typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : HTMLCanvasElement;
-    const tempCanvas = new TempCanvas(actualImageDimensions.width, actualImageDimensions.height);
-    const ctx = tempCanvas.getContext('2d')!;
-    
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const scaleX = actualImageDimensions.width / fabricCanvas.width!;
-    const scaleY = actualImageDimensions.height / fabricCanvas.height!;
-    
-    // Batch drawing operations for better performance
-    ctx.beginPath();
-    fabricCanvas.getObjects().forEach(obj => {
-      if (obj.type === 'path') {
-        const path = obj as fabric.Path;
-        ctx.lineWidth = path.strokeWidth! * scaleX;
-        const pathData = path.path;
-        pathData?.forEach((segment: any, i: number) => {
-          if (i === 0) {
-            ctx.moveTo(segment[1] * scaleX, segment[2] * scaleY);
-          } else {
-            ctx.lineTo(segment[1] * scaleX, segment[2] * scaleY);
-          }
-        });
-      }
-    });
-    ctx.strokeStyle = 'white';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    
-    return tempCanvas.toDataURL();
-  };
-
   const handleCanvasReady = (canvas: fabric.Canvas) => {
-    // Optimize canvas rendering
-    canvas.enableRetinaScaling = false; // Disable retina scaling for better performance
-    canvas.selection = false; // Disable selection for better performance
-    canvas.renderOnAddRemove = false; // Disable automatic rendering
-    
     setFabricCanvas(canvas);
     if (originalImage) {
       fabric.Image.fromURL(originalImage, (img) => {
@@ -127,8 +80,63 @@ export function useImageProcessing() {
           originX: 'left',
           originY: 'top'
         });
-      }, { crossOrigin: 'anonymous' }); // Enable CORS for Safari
+      });
     }
+  };
+
+  const getMaskFromCanvas = () => {
+    if (!fabricCanvas || !actualImageDimensions) return null;
+    
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = actualImageDimensions.width;
+    tempCanvas.height = actualImageDimensions.height;
+    const ctx = tempCanvas.getContext('2d')!;
+    
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    const scaleX = actualImageDimensions.width / fabricCanvas.width!;
+    const scaleY = actualImageDimensions.height / fabricCanvas.height!;
+    
+    ctx.strokeStyle = 'white';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    fabricCanvas.getObjects().forEach(obj => {
+      if (obj.type === 'path') {
+        const path = obj as fabric.Path;
+        ctx.lineWidth = path.strokeWidth! * scaleX * 1.2;
+        ctx.beginPath();
+        const pathData = path.path;
+        pathData?.forEach((segment: any, i: number) => {
+          if (i === 0) {
+            ctx.moveTo(segment[1] * scaleX, segment[2] * scaleY);
+          } else {
+            ctx.lineTo(segment[1] * scaleX, segment[2] * scaleY);
+          }
+        });
+        ctx.stroke();
+      }
+    });
+    
+    fabricCanvas.getObjects().forEach(obj => {
+      if (obj.type === 'path') {
+        const path = obj as fabric.Path;
+        ctx.lineWidth = path.strokeWidth! * scaleX * 0.8;
+        ctx.beginPath();
+        const pathData = path.path;
+        pathData?.forEach((segment: any, i: number) => {
+          if (i === 0) {
+            ctx.moveTo(segment[1] * scaleX, segment[2] * scaleY);
+          } else {
+            ctx.lineTo(segment[1] * scaleX, segment[2] * scaleY);
+          }
+        });
+        ctx.stroke();
+      }
+    });
+    
+    return tempCanvas.toDataURL();
   };
 
   const processImage = async (prompt: string) => {
@@ -146,11 +154,15 @@ export function useImageProcessing() {
         return;
       }
       
-      // Upload images in parallel for better performance
-      const [originalImageUrl, maskImageUrl] = await Promise.all([
-        uploadToSupabase(originalImage, 'original.png'),
-        uploadToSupabase(maskDataUrl, 'mask.png')
-      ]);
+      const originalImageUrl = await uploadToSupabase(
+        originalImage,
+        'original.png'
+      );
+
+      const maskImageUrl = await uploadToSupabase(
+        maskDataUrl,
+        'mask.png'
+      );
 
       const { data, error } = await supabase.functions.invoke('process-image', {
         body: {
