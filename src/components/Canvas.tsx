@@ -19,6 +19,10 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       isDrawingMode: true,
       width,
       height,
+      // Enable touch events directly in the options
+      enableRetinaScaling: true,
+      fireRightClick: true,
+      stopContextMenu: true,
     });
 
     // Configure the brush for better cross-device compatibility
@@ -26,8 +30,8 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
     canvas.freeDrawingBrush.width = 20;
     canvas.freeDrawingBrush.color = "black";
 
-    // Enable touch events
-    canvas.enablePointerEvents();
+    // Set touch-specific options
+    canvas.set('allowTouchScrolling', false);
 
     fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);

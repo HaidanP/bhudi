@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { Upload } from "lucide-react";
 import { PromptInput } from "./PromptInput";
 import { Canvas } from "./Canvas";
+import { fabric } from "fabric";
 
 export const ImageEditor = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
