@@ -50,7 +50,7 @@ export const DrawingToolbar = ({
           value={[brushSize]}
           onValueChange={(value) => onBrushSizeChange(value[0])}
           min={1}
-          max={50}
+          max={100}
           step={1}
           className="w-full"
         />
