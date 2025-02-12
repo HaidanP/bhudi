@@ -76,20 +76,42 @@ export const ImageEditor = () => {
     tempCanvas.height = actualImageDimensions.height;
     const ctx = tempCanvas.getContext('2d')!;
     
-    // Draw white background
-    ctx.fillStyle = 'white';
+    // Draw black background (for preservation)
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
     // Calculate scale factor between display size and actual size
     const scaleX = actualImageDimensions.width / fabricCanvas.width!;
     const scaleY = actualImageDimensions.height / fabricCanvas.height!;
     
-    // Draw black paths scaled to match original image dimensions
-    ctx.strokeStyle = 'black';
+    // Draw white paths (for inpainting) with enhanced quality
+    ctx.strokeStyle = 'white';
+    ctx.lineCap = 'round';  // Round line endings for smoother paths
+    ctx.lineJoin = 'round'; // Round line joins for smoother connections
+    
+    // First pass: Draw paths with original width for core coverage
     fabricCanvas.getObjects().forEach(obj => {
       if (obj.type === 'path') {
         const path = obj as fabric.Path;
-        ctx.lineWidth = path.strokeWidth! * scaleX; // Scale stroke width
+        ctx.lineWidth = path.strokeWidth! * scaleX * 1.2; // Slightly wider for better coverage
+        ctx.beginPath();
+        const pathData = path.path;
+        pathData?.forEach((segment: any, i: number) => {
+          if (i === 0) {
+            ctx.moveTo(segment[1] * scaleX, segment[2] * scaleY);
+          } else {
+            ctx.lineTo(segment[1] * scaleX, segment[2] * scaleY);
+          }
+        });
+        ctx.stroke();
+      }
+    });
+    
+    // Second pass: Fill in gaps with a slightly smaller brush
+    fabricCanvas.getObjects().forEach(obj => {
+      if (obj.type === 'path') {
+        const path = obj as fabric.Path;
+        ctx.lineWidth = path.strokeWidth! * scaleX * 0.8;
         ctx.beginPath();
         const pathData = path.path;
         pathData?.forEach((segment: any, i: number) => {
