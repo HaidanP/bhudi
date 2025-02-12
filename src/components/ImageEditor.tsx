@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Header } from "./Header";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { createBinaryMask, uploadToSupabase } from "@/utils/imageProcessing";
+import { uploadToSupabase } from "@/utils/imageProcessing";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "./ui/button";
 import { Upload } from "lucide-react";
@@ -15,7 +15,6 @@ export const ImageEditor = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [generatedMask, setGeneratedMask] = useState<string | null>(null);
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [actualImageDimensions, setActualImageDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -26,10 +25,8 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        // Store actual image dimensions
         setActualImageDimensions({ width: img.width, height: img.height });
         
-        // Calculate display dimensions that maintain aspect ratio and fit within reasonable bounds
         const maxDimension = 512;
         const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
         const scaledWidth = Math.round(img.width * scale);
@@ -38,7 +35,6 @@ export const ImageEditor = () => {
         setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
         setOriginalImage(e.target?.result as string);
         setGeneratedImage(null);
-        setGeneratedMask(null);
         toast.success("Image uploaded successfully!");
       };
       img.src = e.target?.result as string;
@@ -70,30 +66,25 @@ export const ImageEditor = () => {
   const getMaskFromCanvas = () => {
     if (!fabricCanvas || !actualImageDimensions) return null;
     
-    // Create a temporary canvas at the original image dimensions
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = actualImageDimensions.width;
     tempCanvas.height = actualImageDimensions.height;
     const ctx = tempCanvas.getContext('2d')!;
     
-    // Draw black background (for preservation)
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Calculate scale factor between display size and actual size
     const scaleX = actualImageDimensions.width / fabricCanvas.width!;
     const scaleY = actualImageDimensions.height / fabricCanvas.height!;
     
-    // Draw white paths (for inpainting) with enhanced quality
     ctx.strokeStyle = 'white';
-    ctx.lineCap = 'round';  // Round line endings for smoother paths
-    ctx.lineJoin = 'round'; // Round line joins for smoother connections
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     
-    // First pass: Draw paths with original width for core coverage
     fabricCanvas.getObjects().forEach(obj => {
       if (obj.type === 'path') {
         const path = obj as fabric.Path;
-        ctx.lineWidth = path.strokeWidth! * scaleX * 1.2; // Slightly wider for better coverage
+        ctx.lineWidth = path.strokeWidth! * scaleX * 1.2;
         ctx.beginPath();
         const pathData = path.path;
         pathData?.forEach((segment: any, i: number) => {
@@ -107,7 +98,6 @@ export const ImageEditor = () => {
       }
     });
     
-    // Second pass: Fill in gaps with a slightly smaller brush
     fabricCanvas.getObjects().forEach(obj => {
       if (obj.type === 'path') {
         const path = obj as fabric.Path;
@@ -137,14 +127,11 @@ export const ImageEditor = () => {
     setIsProcessing(true);
     
     try {
-      // Get mask from canvas instead of generating it
       const maskDataUrl = getMaskFromCanvas();
       if (!maskDataUrl) {
         toast.error("Please draw a mask first!");
         return;
       }
-      
-      setGeneratedMask(maskDataUrl);
       
       const originalImageUrl = await uploadToSupabase(
         originalImage,
@@ -211,19 +198,6 @@ export const ImageEditor = () => {
                   width={originalDimensions?.width || 512}
                   height={originalDimensions?.height || 512}
                 />
-              </div>
-            )}
-
-            {generatedMask && (
-              <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-                <h3 className="text-sm font-medium mb-2">Generated Mask</h3>
-                <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center">
-                  <img 
-                    src={generatedMask} 
-                    alt="Mask" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
               </div>
             )}
 
