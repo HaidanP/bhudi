@@ -8,7 +8,7 @@ interface ImageUploadButtonProps {
 
 export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
   return (
-    <>
+    <div className="container-width mt-14">
       <input
         type="file"
         accept="image/*"
@@ -16,14 +16,22 @@ export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
         className="hidden"
         id="image-upload"
       />
-      <Button 
-        variant="outline" 
-        className="gap-3 w-full md:w-auto h-12 px-6 text-base font-medium border-rose-800/50 hover:bg-rose-950/30 hover:text-rose-500 text-rose-600 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]" 
+      <div 
+        className="group p-8 bg-white/[0.03] border-2 border-dashed border-[rgba(255,107,107,0.3)] hover:border-[#ff6b6b] rounded-2xl transition-all duration-300 cursor-pointer hover:scale-[1.01]"
         onClick={() => document.getElementById('image-upload')?.click()}
       >
-        <Upload size={20} className="animate-bounce" />
-        Upload Image
-      </Button>
-    </>
+        <div className="flex flex-col items-center gap-4">
+          <Upload size={32} className="text-[#ff6b6b]" />
+          <div className="space-y-2 text-center">
+            <p className="text-[18px] font-medium tracking-[0.5px] text-white/90">
+              Upload Image
+            </p>
+            <p className="text-[14px] text-white/50">
+              Supports JPG, PNG • Max 5MB
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

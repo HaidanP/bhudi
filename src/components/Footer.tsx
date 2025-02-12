@@ -1,9 +1,9 @@
 
 export const Footer = () => {
   return (
-    <footer className="text-center py-10 md:py-12 backdrop-blur-md bg-black/20 rounded-2xl border border-white/5 transition-all duration-300 hover:border-white/10">
-      <p className="text-base text-gray-400 font-medium tracking-wide">
-        Made with <span className="text-rose-500 animate-pulse">♥️</span> by <span className="text-rose-400 font-semibold hover:text-rose-300 transition-colors duration-300">Haidan</span>
+    <footer className="fixed bottom-8 left-0 right-0 text-center">
+      <p className="text-[15px] text-white/60 font-medium transition-opacity duration-200 hover:opacity-80">
+        Made with <span className="text-[#ff6b6b] animate-pulse">♥️</span> by <span className="hover:text-white/80 transition-colors duration-200">Haidan</span>
       </p>
     </footer>
   );
