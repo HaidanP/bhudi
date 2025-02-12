@@ -18,6 +18,7 @@ export const ImageEditor = () => {
   const [generatedMask, setGeneratedMask] = useState<string | null>(null);
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
+  const [actualImageDimensions, setActualImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const isMobile = useIsMobile();
 
   const handleImageUpload = async (file: File) => {
@@ -25,7 +26,10 @@ export const ImageEditor = () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        // Calculate dimensions that maintain aspect ratio and fit within reasonable bounds
+        // Store actual image dimensions
+        setActualImageDimensions({ width: img.width, height: img.height });
+        
+        // Calculate display dimensions that maintain aspect ratio and fit within reasonable bounds
         const maxDimension = 512;
         const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
         const scaledWidth = Math.round(img.width * scale);
@@ -64,29 +68,35 @@ export const ImageEditor = () => {
   };
 
   const getMaskFromCanvas = () => {
-    if (!fabricCanvas) return null;
+    if (!fabricCanvas || !actualImageDimensions) return null;
+    
+    // Create a temporary canvas at the original image dimensions
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = fabricCanvas.width!;
-    tempCanvas.height = fabricCanvas.height!;
+    tempCanvas.width = actualImageDimensions.width;
+    tempCanvas.height = actualImageDimensions.height;
     const ctx = tempCanvas.getContext('2d')!;
     
     // Draw white background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Draw black paths
+    // Calculate scale factor between display size and actual size
+    const scaleX = actualImageDimensions.width / fabricCanvas.width!;
+    const scaleY = actualImageDimensions.height / fabricCanvas.height!;
+    
+    // Draw black paths scaled to match original image dimensions
+    ctx.strokeStyle = 'black';
     fabricCanvas.getObjects().forEach(obj => {
       if (obj.type === 'path') {
         const path = obj as fabric.Path;
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = path.strokeWidth!;
+        ctx.lineWidth = path.strokeWidth! * scaleX; // Scale stroke width
         ctx.beginPath();
         const pathData = path.path;
         pathData?.forEach((segment: any, i: number) => {
           if (i === 0) {
-            ctx.moveTo(segment[1], segment[2]);
+            ctx.moveTo(segment[1] * scaleX, segment[2] * scaleY);
           } else {
-            ctx.lineTo(segment[1], segment[2]);
+            ctx.lineTo(segment[1] * scaleX, segment[2] * scaleY);
           }
         });
         ctx.stroke();
