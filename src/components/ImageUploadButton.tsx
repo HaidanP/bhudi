@@ -18,7 +18,7 @@ export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
       />
       <Button 
         variant="outline" 
-        className="gap-3 w-full md:w-auto h-12 px-6 text-base font-medium border-rose-800/50 hover:bg-rose-950/30 hover:text-rose-500 text-rose-600 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]" 
+        className="gap-2 w-full md:w-auto min-h-[48px] px-6 text-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 active:scale-95 min-w-[200px] flex items-center justify-center" 
         onClick={() => document.getElementById('image-upload')?.click()}
       >
         <Upload size={20} className="animate-bounce" />

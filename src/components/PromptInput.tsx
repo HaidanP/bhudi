@@ -22,20 +22,20 @@ export const PromptInput = ({ onSubmit, disabled }: PromptInputProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'flex-col' : ''} gap-4 bg-black/60 backdrop-blur-2xl p-5 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.25)] border border-white/10 transition-all duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.05)] group`}>
+    <form onSubmit={handleSubmit} className={`flex ${isMobile ? 'flex-col' : ''} gap-4`}>
       <Input
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe the changes you want to make..."
-        className="flex-1 min-h-[48px] text-base placeholder:text-gray-500 bg-black/40 border-white/10 focus-visible:ring-rose-500/50 text-gray-200 rounded-xl transition-all duration-300 focus-within:shadow-lg"
+        placeholder="Describe the changes you want..."
+        className="w-full bg-gray-900 text-gray-200 placeholder-gray-400 py-3 px-4 min-h-[48px] text-lg rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none transition-all duration-300"
         disabled={disabled}
       />
       <Button 
         type="submit" 
         disabled={disabled || !prompt.trim()} 
-        className={`min-h-[48px] px-6 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-base font-medium disabled:opacity-50 rounded-xl transition-all duration-300 ${isMobile ? 'w-full' : 'min-w-[140px]'} transform hover:scale-105 active:scale-95 disabled:hover:scale-100 shadow-lg hover:shadow-xl`}
+        className={`min-h-[48px] px-6 bg-rose-500 text-white text-lg font-semibold rounded-lg shadow-md hover:bg-rose-600 transition-all duration-300 ${isMobile ? 'w-full min-w-[200px]' : 'min-w-[140px]'} transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2`}
       >
-        <Wand2 size={18} className="mr-2" />
+        <Wand2 size={18} />
         Generate
       </Button>
     </form>
