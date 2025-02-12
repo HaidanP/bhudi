@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadToSupabase } from "@/utils/imageProcessing";
 import { fabric } from "fabric";
+import heic2any from "heic2any";
 
 export function useImageProcessing() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -13,26 +13,58 @@ export function useImageProcessing() {
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [actualImageDimensions, setActualImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
+  const resetState = () => {
+    setOriginalImage(null);
+    setGeneratedImage(null);
+    setOriginalDimensions(null);
+    setActualImageDimensions(null);
+    if (fabricCanvas) {
+      fabricCanvas.clear();
+      fabricCanvas.backgroundColor = 'transparent';
+      fabricCanvas.renderAll();
+    }
+  };
+
   const handleImageUpload = async (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        setActualImageDimensions({ width: img.width, height: img.height });
-        
-        const maxDimension = 512;
-        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
-        const scaledWidth = Math.round(img.width * scale);
-        const scaledHeight = Math.round(img.height * scale);
-        
-        setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
-        setOriginalImage(e.target?.result as string);
-        setGeneratedImage(null);
-        toast.success("Image uploaded successfully!");
+    try {
+      let processedFile = file;
+      
+      // Convert HEIC to JPEG if needed
+      if (file.type === "image/heic" || file.type === "image/heif") {
+        toast.info("Converting HEIC image...");
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 0.8
+        });
+        processedFile = new File([convertedBlob as Blob], file.name.replace(/\.heic$/i, '.jpg'), {
+          type: 'image/jpeg'
+        });
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          setActualImageDimensions({ width: img.width, height: img.height });
+          
+          const maxDimension = 512;
+          const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+          const scaledWidth = Math.round(img.width * scale);
+          const scaledHeight = Math.round(img.height * scale);
+          
+          setOriginalDimensions({ width: scaledWidth, height: scaledHeight });
+          setOriginalImage(e.target?.result as string);
+          setGeneratedImage(null);
+          toast.success("Image uploaded successfully!");
+        };
+        img.src = e.target?.result as string;
       };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(processedFile);
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast.error("Failed to process image. Please try a different format.");
+    }
   };
 
   const handleCanvasReady = (canvas: fabric.Canvas) => {
@@ -159,5 +191,6 @@ export function useImageProcessing() {
     handleImageUpload,
     handleCanvasReady,
     processImage,
+    resetState,
   };
 }
