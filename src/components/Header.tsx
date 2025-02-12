@@ -18,7 +18,7 @@ export const Header = () => {
             particleColor="#FFFFFF"
           />
         </div>
-        <h1 className={`${isMobile ? 'text-4xl' : 'text-6xl'} font-bold bg-gradient-to-r from-rose-800 via-rose-700 to-rose-600 text-transparent bg-clip-text relative z-10`}>
+        <h1 className={`font-display ${isMobile ? 'text-4xl' : 'text-6xl'} font-bold bg-gradient-to-r from-rose-800 via-rose-700 to-rose-600 text-transparent bg-clip-text relative z-10`}>
           Sprettza
         </h1>
       </div>
