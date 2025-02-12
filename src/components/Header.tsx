@@ -22,7 +22,7 @@ export const Header = () => {
           Sprettza
         </h1>
       </div>
-      <p className="text-gray-300/90 max-w-3xl mx-auto text-lg md:text-xl font-medium leading-relaxed backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl bg-black/10 border border-white/20">
+      <p className="text-gray-300/90 max-w-3xl mx-auto text-base md:text-lg font-medium leading-relaxed backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl bg-black/10 border border-white/20">
         Transform your fashion with AI-powered magic. Edit, reimagine, and bring your clothing ideas to life.
       </p>
     </header>
