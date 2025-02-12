@@ -6,9 +6,10 @@ interface CanvasProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
   width: number;
   height: number;
+  brushSize: number;  // Add this prop
 }
 
-export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
+export const Canvas = ({ onCanvasReady, width, height, brushSize }: CanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
 
@@ -25,7 +26,6 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       isDrawingMode: true,
       width: scaledWidth,
       height: scaledHeight,
-      // Enable touch events directly in the options
       enableRetinaScaling: true,
       fireRightClick: true,
       stopContextMenu: true,
@@ -34,7 +34,7 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
 
     // Configure the brush for better cross-device compatibility
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.width = 20 * scale; // Scale brush size proportionally
+    canvas.freeDrawingBrush.width = brushSize;  // Use the brushSize prop
     canvas.freeDrawingBrush.color = "black";
 
     fabricCanvasRef.current = canvas;
@@ -63,6 +63,13 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       fabricCanvasRef.current = null;
     };
   }, []);
+
+  // Update brush size when it changes
+  useEffect(() => {
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
+    }
+  }, [brushSize]);
 
   // Handle dimension changes separately
   useEffect(() => {

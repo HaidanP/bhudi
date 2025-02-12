@@ -66,6 +66,7 @@ export const ImageEditor = () => {
                 onCanvasReady={handleCanvasReady}
                 width={originalDimensions.width}
                 height={originalDimensions.height}
+                brushSize={brushSize}
               />
             )}
 
