@@ -38,9 +38,9 @@ serve(async (req) => {
 
     console.log("Generating mask for image:", imageUrl)
 
-    // Run the model and wait for completion - using a model that detects all clothing including footwear
+    // Run the model with the working model ID
     const output = await replicate.run(
-      "cjwbw/mask-clothing-all:e121a56720ff7f4cec25660992bb8c0800c08f89c7876ffe560c86c1f28166b7",
+      "ahmdyassr/mask-clothing:1c60fd50bf0e5fb2ccbd93403cf163d5586ab8939139167ac82d29ebb047e84f",
       {
         input: {
           image: imageUrl

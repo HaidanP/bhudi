@@ -21,6 +21,14 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       height,
     });
 
+    // Configure the brush for better cross-device compatibility
+    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    canvas.freeDrawingBrush.width = 20;
+    canvas.freeDrawingBrush.color = "black";
+
+    // Enable touch events
+    canvas.enablePointerEvents();
+
     fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);
 

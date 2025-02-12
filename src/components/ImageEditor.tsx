@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "./ui/button";
 import { Upload } from "lucide-react";
 import { PromptInput } from "./PromptInput";
+import { Canvas } from "./Canvas";
 
 export const ImageEditor = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export const ImageEditor = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedMask, setGeneratedMask] = useState<string | null>(null);
   const [originalDimensions, setOriginalDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const isMobile = useIsMobile();
 
   const handleImageUpload = async (file: File) => {
@@ -40,6 +42,51 @@ export const ImageEditor = () => {
     }
   };
 
+  const handleCanvasReady = (canvas: fabric.Canvas) => {
+    setFabricCanvas(canvas);
+    if (originalImage) {
+      fabric.Image.fromURL(originalImage, (img) => {
+        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+          scaleX: canvas.width! / img.width!,
+          scaleY: canvas.height! / img.height!,
+        });
+      });
+    }
+  };
+
+  const getMaskFromCanvas = () => {
+    if (!fabricCanvas) return null;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = fabricCanvas.width!;
+    tempCanvas.height = fabricCanvas.height!;
+    const ctx = tempCanvas.getContext('2d')!;
+    
+    // Draw white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Draw black paths
+    fabricCanvas.getObjects().forEach(obj => {
+      if (obj.type === 'path') {
+        const path = obj as fabric.Path;
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = path.strokeWidth!;
+        ctx.beginPath();
+        const pathData = path.path;
+        pathData?.forEach((segment: any, i: number) => {
+          if (i === 0) {
+            ctx.moveTo(segment[1], segment[2]);
+          } else {
+            ctx.lineTo(segment[1], segment[2]);
+          }
+        });
+        ctx.stroke();
+      }
+    });
+    
+    return tempCanvas.toDataURL();
+  };
+
   const handleSubmit = async (prompt: string) => {
     if (!originalImage || !originalDimensions) {
       toast.error("Please upload an image first!");
@@ -49,17 +96,13 @@ export const ImageEditor = () => {
     setIsProcessing(true);
     
     try {
-      const tempImg = document.createElement('img');
-      tempImg.src = originalImage;
+      // Get mask from canvas instead of generating it
+      const maskDataUrl = getMaskFromCanvas();
+      if (!maskDataUrl) {
+        toast.error("Please draw a mask first!");
+        return;
+      }
       
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = originalDimensions.width;
-      tempCanvas.height = originalDimensions.height;
-      const ctx = tempCanvas.getContext('2d')!;
-      ctx.drawImage(tempImg, 0, 0);
-      
-      // Generate mask using the segmentation model
-      const maskDataUrl = await createBinaryMask(tempCanvas);
       setGeneratedMask(maskDataUrl);
       
       const originalImageUrl = await uploadToSupabase(
@@ -121,14 +164,12 @@ export const ImageEditor = () => {
           <div className={`flex ${isMobile ? 'flex-col' : ''} gap-4 md:gap-8`}>
             {originalImage && (
               <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-                <h3 className="text-sm font-medium mb-2">Original Image</h3>
-                <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center">
-                  <img 
-                    src={originalImage} 
-                    alt="Original" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
+                <h3 className="text-sm font-medium mb-2">Draw Mask</h3>
+                <Canvas 
+                  onCanvasReady={handleCanvasReady}
+                  width={originalDimensions?.width || 512}
+                  height={originalDimensions?.height || 512}
+                />
               </div>
             )}
 
