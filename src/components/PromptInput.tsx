@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { Wand2 } from "lucide-react";
 
@@ -21,11 +21,11 @@ export const PromptInput = ({ onSubmit, disabled }: PromptInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="container-width space-y-6">
-      <Input
+      <Textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Describe the changes you want..."
-        className="w-full h-[56px] text-lg bg-white/[0.02] text-white border border-[rgba(255,107,107,0.2)] placeholder:text-white/40 rounded-xl px-4 focus:border-[#ff6b6b] focus:ring-2 focus:ring-[#ff6b6b]/10 transition-all duration-200"
+        className="w-full min-h-[56px] max-h-[200px] text-lg bg-white/[0.02] text-white border border-[rgba(255,107,107,0.2)] placeholder:text-white/40 rounded-xl px-4 py-4 focus:border-[#ff6b6b] focus:ring-2 focus:ring-[#ff6b6b]/10 transition-all duration-200 resize-y"
         disabled={disabled}
       />
       <Button 
