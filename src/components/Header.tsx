@@ -8,7 +8,6 @@ export const Header = () => {
   return (
     <header className="relative pt-[12vh] text-center space-y-12 animate-fade-in">
       <div className="relative flex justify-center items-center">
-        <div className="absolute inset-0 shimmer pointer-events-none" />
         <h1 className={`font-display ${isMobile ? 'text-5xl' : 'text-[64px]'} font-bold bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 text-transparent bg-clip-text relative z-10 drop-shadow-[0_0_3px_rgba(255,107,107,0.4)]`}>
           Sprettza
         </h1>
