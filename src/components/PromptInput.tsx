@@ -25,8 +25,9 @@ export const PromptInput = ({ onSubmit, disabled }: PromptInputProps) => {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Describe the changes you want..."
-        className="w-full min-h-[56px] max-h-[200px] text-lg bg-white/[0.02] text-white border border-[rgba(255,107,107,0.2)] placeholder:text-white/40 rounded-xl px-4 py-4 focus:border-[#ff6b6b] focus:ring-2 focus:ring-[#ff6b6b]/10 transition-all duration-200 resize-y"
+        className="w-full h-[56px] text-lg bg-white/[0.02] text-white border border-[rgba(255,107,107,0.2)] placeholder:text-white/40 rounded-xl px-4 py-3 focus:border-[#ff6b6b] focus:ring-2 focus:ring-[#ff6b6b]/10 transition-all duration-200 resize-none overflow-hidden focus:min-h-[56px] focus:max-h-[200px] focus:resize-y"
         disabled={disabled}
+        rows={1}
       />
       <Button 
         type="submit" 
