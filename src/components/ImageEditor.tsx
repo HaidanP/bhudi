@@ -51,7 +51,7 @@ export const ImageEditor = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0a0a]">
-      <div className="absolute inset-0 w-full h-full">
+      <div className="absolute inset-0 w-full h-full opacity-40">
         <SparklesCore
           id="tsparticles"
           background="transparent"

@@ -27,7 +27,7 @@ export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
               Upload Image
             </p>
             <p className="text-[14px] text-white/50">
-              Supports JPG, PNG • Max 5MB
+              Supports all common image formats including HEIC
             </p>
           </div>
         </div>
