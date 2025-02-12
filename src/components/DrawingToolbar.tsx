@@ -1,6 +1,6 @@
 
 import { Button } from "./ui/button";
-import { Slider } from "./ui/button";
+import { Slider } from "./ui/slider";
 import { Brush, Eraser } from "lucide-react";
 
 interface DrawingToolbarProps {
