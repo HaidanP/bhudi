@@ -11,7 +11,7 @@ export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
     <>
       <input
         type="file"
-        accept="image/*,.heic,.heif"
+        accept="image/*"
         onChange={onFileChange}
         className="hidden"
         id="image-upload"

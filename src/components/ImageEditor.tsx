@@ -10,8 +10,6 @@ import { GeneratedResult } from "./GeneratedResult";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { useImageProcessing } from "@/hooks/use-image-processing";
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { RotateCcw } from "lucide-react";
 
 export const ImageEditor = () => {
   const [activeTool, setActiveTool] = useState<"brush" | "eraser">("brush");
@@ -26,7 +24,6 @@ export const ImageEditor = () => {
     handleImageUpload,
     handleCanvasReady,
     processImage,
-    resetState,
   } = useImageProcessing();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,10 +39,6 @@ export const ImageEditor = () => {
 
   const handleBrushSizeChange = (size: number) => {
     setBrushSize(size);
-  };
-
-  const handleTryAgain = () => {
-    resetState();
   };
 
   return (
@@ -64,17 +57,6 @@ export const ImageEditor = () => {
                 onToolChange={handleToolChange}
                 onBrushSizeChange={handleBrushSizeChange}
               />
-            )}
-
-            {generatedImage && (
-              <Button
-                variant="outline"
-                className="gap-2 h-12 px-6 text-base font-medium border-rose-800/50 hover:bg-rose-800/10 hover:text-rose-600 text-rose-700"
-                onClick={handleTryAgain}
-              >
-                <RotateCcw size={20} />
-                Try Again
-              </Button>
             )}
           </div>
 
