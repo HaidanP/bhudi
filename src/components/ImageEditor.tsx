@@ -9,12 +9,16 @@ import { ImagePreview } from "./ImagePreview";
 import { GeneratedResult } from "./GeneratedResult";
 import { LoadingOverlay } from "./LoadingOverlay";
 import { useImageProcessing } from "@/hooks/use-image-processing";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { Button } from "./ui/button";
+import { RefreshCw, Image as ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 
 export const ImageEditor = () => {
   const [activeTool, setActiveTool] = useState<"brush" | "eraser">("brush");
   const [brushSize, setBrushSize] = useState(20);
   const isMobile = useIsMobile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
     originalImage,
@@ -24,6 +28,7 @@ export const ImageEditor = () => {
     handleImageUpload,
     handleCanvasReady,
     processImage,
+    resetState
   } = useImageProcessing();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +46,15 @@ export const ImageEditor = () => {
     setBrushSize(size);
   };
 
+  const handleRetry = () => {
+    resetState();
+    toast.success("Canvas cleared! You can start over.");
+  };
+
+  const handleGalleryClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#1A1F2C] to-black p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
@@ -48,7 +62,28 @@ export const ImageEditor = () => {
 
         <div className="space-y-6 md:space-y-8 bg-black/60 backdrop-blur-md rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/10">
           <div className="flex flex-col md:flex-row gap-4 items-start">
-            <ImageUploadButton onFileChange={handleFileChange} />
+            <div className="flex gap-3 w-full md:w-auto">
+              <ImageUploadButton onFileChange={handleFileChange} />
+              
+              {originalImage && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="h-12 px-4 border-rose-800/50 hover:bg-rose-800/10 hover:text-rose-600 text-rose-700"
+                    onClick={handleGalleryClick}
+                  >
+                    <ImageIcon size={20} />
+                  </Button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </>
+              )}
+            </div>
             
             {originalImage && (
               <DrawingToolbar
@@ -62,12 +97,26 @@ export const ImageEditor = () => {
 
           <div className={`flex ${isMobile ? 'flex-col' : ''} gap-6 md:gap-8`}>
             {originalImage && originalDimensions && (
-              <ImagePreview
-                onCanvasReady={handleCanvasReady}
-                width={originalDimensions.width}
-                height={originalDimensions.height}
-                brushSize={brushSize}
-              />
+              <div className="w-full flex-1">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-base font-medium text-gray-300">Draw on the areas to edit</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="border-rose-800/50 hover:bg-rose-800/10 hover:text-rose-600 text-rose-700"
+                  >
+                    <RefreshCw size={16} className="mr-2" />
+                    Reset
+                  </Button>
+                </div>
+                <ImagePreview
+                  onCanvasReady={handleCanvasReady}
+                  width={originalDimensions.width}
+                  height={originalDimensions.height}
+                  brushSize={brushSize}
+                />
+              </div>
             )}
 
             {generatedImage && (
