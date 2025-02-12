@@ -23,15 +23,13 @@ export const Canvas = ({ onCanvasReady, width, height }: CanvasProps) => {
       enableRetinaScaling: true,
       fireRightClick: true,
       stopContextMenu: true,
+      allowTouchScrolling: false // Set the option directly in the constructor
     });
 
     // Configure the brush for better cross-device compatibility
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     canvas.freeDrawingBrush.width = 20;
     canvas.freeDrawingBrush.color = "black";
-
-    // Set touch-specific options
-    canvas.set('allowTouchScrolling', false);
 
     fabricCanvasRef.current = canvas;
     onCanvasReady(canvas);
