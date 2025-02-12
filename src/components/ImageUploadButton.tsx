@@ -22,14 +22,9 @@ export const ImageUploadButton = ({ onFileChange }: ImageUploadButtonProps) => {
       >
         <div className="flex flex-col items-center gap-4">
           <Upload size={32} className="text-[#ff6b6b]" />
-          <div className="space-y-2 text-center">
-            <p className="text-[18px] font-medium tracking-[0.5px] text-white/90">
-              Upload Image
-            </p>
-            <p className="text-[14px] text-white/50">
-              Supports all common image formats including HEIC
-            </p>
-          </div>
+          <p className="text-[18px] font-medium tracking-[0.5px] text-white/90">
+            Upload Image
+          </p>
         </div>
       </div>
     </div>
