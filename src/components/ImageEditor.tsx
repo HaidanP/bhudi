@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
@@ -186,11 +187,11 @@ export const ImageEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-blue-50 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-blue-50 to-fuchsia-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
         <Header />
 
-        <div className="glass-panel bg-white/30 backdrop-blur-sm rounded-xl p-4 md:p-8 space-y-4 md:space-y-6 shadow-lg border border-white/20">
+        <div className="space-y-6 md:space-y-8 bg-white/40 backdrop-blur-md rounded-2xl p-6 md:p-8 shadow-xl border border-white">
           <div className="flex flex-col md:flex-row gap-4 items-start">
             <input
               type="file"
@@ -201,10 +202,10 @@ export const ImageEditor = () => {
             />
             <Button 
               variant="outline" 
-              className="gap-2 w-full md:w-auto bg-white/50 hover:bg-white/70" 
+              className="gap-3 w-full md:w-auto h-12 px-6 text-base font-medium border-2 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300" 
               onClick={() => document.getElementById('image-upload')?.click()}
             >
-              <Upload size={16} />
+              <Upload size={20} />
               Upload Image
             </Button>
             
@@ -218,11 +219,11 @@ export const ImageEditor = () => {
             )}
           </div>
 
-          <div className={`flex ${isMobile ? 'flex-col' : ''} gap-4 md:gap-8`}>
+          <div className={`flex ${isMobile ? 'flex-col' : ''} gap-6 md:gap-8`}>
             {originalImage && (
               <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-                <h3 className="text-sm font-medium mb-2">Draw on the areas to edit</h3>
-                <div className="bg-white rounded-lg overflow-hidden shadow-md">
+                <h3 className="text-base font-medium text-slate-700 mb-3">Draw on the areas to edit</h3>
+                <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200">
                   <Canvas 
                     onCanvasReady={handleCanvasReady}
                     width={originalDimensions?.width || 512}
@@ -234,8 +235,8 @@ export const ImageEditor = () => {
 
             {generatedImage && (
               <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-                <h3 className="text-sm font-medium mb-2">Generated Result</h3>
-                <div className="bg-white rounded-lg overflow-hidden shadow-md flex items-center justify-center">
+                <h3 className="text-base font-medium text-slate-700 mb-3">Generated Result</h3>
+                <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200 flex items-center justify-center">
                   <img 
                     src={generatedImage} 
                     alt="Generated" 
@@ -249,10 +250,10 @@ export const ImageEditor = () => {
           <PromptInput onSubmit={handleSubmit} disabled={isProcessing} />
 
           {isProcessing && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="text-white text-center space-y-4">
-                <div className="animate-spin w-10 h-10 border-4 border-white/20 border-t-white rounded-full" />
-                <p>Processing your image...</p>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 text-white text-center space-y-4">
+                <div className="animate-spin w-12 h-12 border-4 border-purple-300/30 border-t-purple-300 rounded-full mx-auto" />
+                <p className="text-lg font-medium">Processing your image...</p>
               </div>
             </div>
           )}

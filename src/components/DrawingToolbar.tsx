@@ -17,27 +17,35 @@ export const DrawingToolbar = ({
   onBrushSizeChange,
 }: DrawingToolbarProps) => {
   return (
-    <div className="flex items-center gap-4 p-3 bg-white/50 backdrop-blur-sm rounded-lg shadow-sm">
+    <div className="flex items-center gap-4 p-4 bg-white/80 backdrop-blur-md rounded-xl shadow-lg border border-purple-100">
       <div className="flex gap-2">
         <Button
           variant={activeTool === "brush" ? "default" : "outline"}
           size="icon"
           onClick={() => onToolChange("brush")}
-          className="h-9 w-9"
+          className={`h-10 w-10 rounded-lg ${
+            activeTool === "brush" 
+              ? "bg-purple-500 hover:bg-purple-600" 
+              : "hover:border-purple-500 hover:text-purple-500"
+          }`}
         >
-          <Brush className="h-4 w-4" />
+          <Brush className="h-5 w-5" />
         </Button>
         <Button
           variant={activeTool === "eraser" ? "default" : "outline"}
           size="icon"
           onClick={() => onToolChange("eraser")}
-          className="h-9 w-9"
+          className={`h-10 w-10 rounded-lg ${
+            activeTool === "eraser" 
+              ? "bg-purple-500 hover:bg-purple-600" 
+              : "hover:border-purple-500 hover:text-purple-500"
+          }`}
         >
-          <Eraser className="h-4 w-4" />
+          <Eraser className="h-5 w-5" />
         </Button>
       </div>
-      <div className="flex items-center gap-3 min-w-[200px]">
-        <span className="text-sm font-medium whitespace-nowrap">Size: {brushSize}px</span>
+      <div className="flex items-center gap-4 min-w-[200px]">
+        <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Size: {brushSize}px</span>
         <Slider
           value={[brushSize]}
           onValueChange={(value) => onBrushSizeChange(value[0])}
