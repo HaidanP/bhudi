@@ -9,7 +9,7 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
     const blob = await base64Response.blob();
     const filePath = `${crypto.randomUUID()}-${filename}`;
     
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('images')
       .upload(filePath, blob, {
         contentType: 'image/png',
@@ -21,16 +21,16 @@ export const uploadToSupabase = async (base64Data: string, filename: string): Pr
       throw uploadError;
     }
 
-    const { data } = await supabase.storage
+    const { data: publicUrl } = supabase.storage
       .from('images')
-      .createSignedUrl(filePath, 3600);
+      .getPublicUrl(filePath);
 
-    if (!data?.signedUrl) {
-      throw new Error('Could not get signed URL for uploaded image');
+    if (!publicUrl?.publicUrl) {
+      throw new Error('Could not get public URL for uploaded image');
     }
 
-    console.log('Successfully uploaded image, signed URL:', data.signedUrl);
-    return data.signedUrl;
+    console.log('Successfully uploaded image, public URL:', publicUrl.publicUrl);
+    return publicUrl.publicUrl;
   } catch (error) {
     console.error('Error in uploadToSupabase:', error);
     throw error;
