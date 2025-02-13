@@ -32,11 +32,6 @@ serve(async (req) => {
 
     const { originalImage, maskImage, prompt } = await req.json()
 
-    if (!originalImage || !maskImage || !prompt) {
-      console.error('Missing required parameters:', { originalImage, maskImage, prompt })
-      throw new Error('Missing required parameters')
-    }
-
     // If it's a status check request
     if (originalImage.predictionId) {
       console.log("Checking status for prediction:", originalImage.predictionId)
@@ -44,7 +39,6 @@ serve(async (req) => {
       console.log("Status check response:", prediction)
       return new Response(JSON.stringify(prediction), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
       })
     }
 
@@ -52,48 +46,22 @@ serve(async (req) => {
     console.log("Original image URL:", originalImage)
     console.log("Mask image URL:", maskImage)
 
-    let prediction
-    try {
-      prediction = await replicate.run(
-        "black-forest-labs/flux-fill-pro",
-        {
-          input: {
-            prompt: prompt,
-            image: originalImage,
-            mask: maskImage,
-            seed: 0,
-            steps: 50,
-            prompt_upsampling: true,
-            guidance: 60,
-            safety_tolerance: 2,
-            output_format: "jpg"
-          }
+    const prediction = await replicate.run(
+      "black-forest-labs/flux-fill-pro",
+      {
+        input: {
+          prompt: prompt,
+          image: originalImage,
+          mask: maskImage,
+          seed: 0,
+          steps: 50,
+          prompt_upsampling: true,
+          guidance: 60,
+          safety_tolerance: 2,
+          output_format: "jpg"
         }
-      )
-      console.log("Raw prediction response:", prediction)
-    } catch (error) {
-      console.error("Replicate API error details:", {
-        error,
-        message: error.message,
-        stack: error.stack,
-        response: error.response
-      })
-      return new Response(JSON.stringify({ 
-        error: 'Failed to process image with Replicate API',
-        details: error.message 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      })
-    }
-
-    if (!prediction) {
-      console.error("No prediction output received")
-      return new Response(JSON.stringify({ error: 'No prediction output received' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      })
-    }
+      }
+    )
 
     console.log("Generation complete. Output:", prediction)
     return new Response(JSON.stringify({ output: prediction }), {
