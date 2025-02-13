@@ -6,8 +6,8 @@ export const Header = () => {
   const isMobile = useIsMobile();
   
   return (
-    <header className="relative pt-[12vh] text-center space-y-8 animate-fade-in">
-      <div className="relative flex flex-col justify-center items-center space-y-6">
+    <header className="relative pt-8 text-center space-y-6 animate-fade-in">
+      <div className="relative flex flex-col justify-center items-center space-y-4">
         <img 
           src="/lovable-uploads/2435473f-cb4d-4821-a1c7-bb0fed62cd11.png"
           alt="Digital Butterfly"
@@ -19,7 +19,7 @@ export const Header = () => {
         </h1>
       </div>
       
-      <div className="space-y-6 container-width">
+      <div className="space-y-4 container-width">
         <p className="text-[22px] font-medium text-white/90 leading-relaxed animate-fade-in [animation-delay:200ms]">
           Transform your fashion with AI-powered magic
         </p>
