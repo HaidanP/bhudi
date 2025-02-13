@@ -1,18 +1,17 @@
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SparklesCore } from "./ui/sparkles";
+import { StarBorder } from "./ui/star-border";
 
 export const Header = () => {
   const isMobile = useIsMobile();
   
   return (
     <header className="relative pt-2 text-center animate-fade-in">
-      <nav className="relative w-full mb-6 py-4 px-6 bg-[#1A1F2C] border-b border-transparent
-        after:content-[''] after:absolute after:bottom-0 after:left-0 
-        after:w-full after:h-[2px] after:bg-white/30
-        after:scale-x-0 after:origin-center
-        after:transition-transform after:duration-500
-        hover:after:scale-x-100">
+      <StarBorder 
+        as="nav"
+        className="w-full mb-6"
+        color="white"
+      >
         <div className="container-width">
           <div className="flex items-center justify-center space-x-4">
             <img 
@@ -26,7 +25,7 @@ export const Header = () => {
             </h1>
           </div>
         </div>
-      </nav>
+      </StarBorder>
 
       <div className="space-y-3 container-width mt-8">
         <p className="text-lg font-medium text-white/90 leading-relaxed animate-fade-in [animation-delay:200ms]">
