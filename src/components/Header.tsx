@@ -11,7 +11,7 @@ export const Header = () => {
         <img 
           src="/lovable-uploads/2435473f-cb4d-4821-a1c7-bb0fed62cd11.png"
           alt="Digital Butterfly"
-          className={`${isMobile ? 'w-32' : 'w-48'} h-auto animate-float`}
+          className={`${isMobile ? 'w-48' : 'w-64'} h-auto animate-float`}
         />
         
         <h1 className={`font-display ${isMobile ? 'text-6xl' : 'text-[84px]'} font-bold bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 text-transparent bg-clip-text relative z-10 drop-shadow-[0_0_3px_rgba(255,107,107,0.4)]`}>
