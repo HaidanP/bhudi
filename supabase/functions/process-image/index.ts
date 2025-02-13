@@ -33,6 +33,7 @@ serve(async (req) => {
     const { originalImage, maskImage, prompt } = await req.json()
 
     if (!originalImage || !maskImage || !prompt) {
+      console.error('Missing required parameters:', { originalImage, maskImage, prompt })
       throw new Error('Missing required parameters')
     }
 
@@ -69,15 +70,25 @@ serve(async (req) => {
           }
         }
       )
+      console.log("Raw prediction response:", prediction)
     } catch (error) {
-      console.error("Replicate API error:", error)
-      return new Response(JSON.stringify({ error: 'Failed to process image with Replicate API' }), {
+      console.error("Replicate API error details:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+        response: error.response
+      })
+      return new Response(JSON.stringify({ 
+        error: 'Failed to process image with Replicate API',
+        details: error.message 
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
       })
     }
 
     if (!prediction) {
+      console.error("No prediction output received")
       return new Response(JSON.stringify({ error: 'No prediction output received' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
